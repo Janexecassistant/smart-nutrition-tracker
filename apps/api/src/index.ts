@@ -17,7 +17,7 @@ app.use(
   "*",
   cors({
     origin: (origin) => {
-      // Allow local dev origins + Expo Go on any LAN IP
+      // Allow local dev origins + Expo Go on any LAN IP + Vercel deployments
       const allowed = [
         "http://localhost:3000",
         "http://localhost:8081",
@@ -25,6 +25,8 @@ app.use(
       ];
       if (!origin) return allowed[0]; // same-origin requests
       if (allowed.includes(origin)) return origin;
+      // Allow Vercel deployment URLs (production + preview)
+      if (origin.endsWith(".vercel.app") || origin.endsWith(".vercel.sh")) return origin;
       // Allow any 192.168.x.x or 10.x.x.x origin (Expo Go on LAN)
       if (/^https?:\/\/(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(origin)) return origin;
       return allowed[0];
