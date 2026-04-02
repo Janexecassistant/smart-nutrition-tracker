@@ -1,7 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Providers } from "@/components/providers";
-import { ServiceWorkerRegistrar } from "@/components/sw-registrar";
-import { InstallPrompt } from "@/components/install-prompt";
+import { RootLayoutClient } from "@/components/root-layout-client";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -38,9 +36,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
       </head>
       <body>
-        <Providers>{children}</Providers>
-        <InstallPrompt />
-        <ServiceWorkerRegistrar />
+        <RootLayoutClient>{children}</RootLayoutClient>
       </body>
     </html>
   );
