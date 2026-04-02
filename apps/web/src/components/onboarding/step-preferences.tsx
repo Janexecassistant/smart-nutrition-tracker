@@ -69,7 +69,7 @@ export function StepPreferences() {
             onClick={() => toggle(pref.value)}
             className={`w-full flex items-center gap-3 p-3.5 rounded-xl text-left transition-all ${
               isSelected(pref.value)
-                ? "bg-green-50 border-2 border-green-500"
+                ? "bg-emerald-50 border-2 border-emerald-600"
                 : "bg-white border border-neutral-200 hover:border-neutral-300"
             }`}
           >
@@ -79,7 +79,7 @@ export function StepPreferences() {
               <div className="text-xs text-neutral-500">{pref.desc}</div>
             </div>
             {isSelected(pref.value) && (
-              <span className="ml-auto text-green-500 shrink-0">✓</span>
+              <span className="ml-auto text-emerald-600 shrink-0">✓</span>
             )}
           </button>
         ))}
@@ -94,7 +94,7 @@ export function StepPreferences() {
 
       <button
         onClick={nextStep}
-        className="w-full py-3 bg-green-500 text-white font-semibold rounded-xl hover:bg-green-600 transition-colors"
+        className="w-full py-3 bg-emerald-500 text-white font-semibold rounded-xl hover:bg-emerald-700 transition-colors"
       >
         Continue
       </button>

@@ -64,7 +64,7 @@ export function StepBasics() {
             onClick={() => updateData({ unitSystem: sys })}
             className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
               data.unitSystem === sys
-                ? "bg-green-500 text-white"
+                ? "bg-emerald-600 text-white"
                 : "bg-neutral-100 text-neutral-500"
             }`}
           >
@@ -81,7 +81,7 @@ export function StepBasics() {
           value={data.dateOfBirth}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateData({ dateOfBirth: e.target.value })}
           max={new Date().toISOString().split("T")[0]}
-          className="w-full px-4 py-3 bg-neutral-100 rounded-xl text-base outline-none focus:ring-2 focus:ring-green-500 focus:bg-white transition-all"
+          className="w-full px-4 py-3 bg-neutral-100 rounded-xl text-base outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
         />
       </div>
 
@@ -96,7 +96,7 @@ export function StepBasics() {
               onClick={() => updateData({ sex: s })}
               className={`flex-1 py-3 rounded-xl text-sm font-medium transition-colors ${
                 data.sex === s
-                  ? "bg-green-500 text-white"
+                  ? "bg-emerald-600 text-white"
                   : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
               }`}
             >
@@ -119,7 +119,7 @@ export function StepBasics() {
                 placeholder="5"
                 min={3}
                 max={8}
-                className="w-full px-4 py-3 bg-neutral-100 rounded-xl text-base outline-none focus:ring-2 focus:ring-green-500 focus:bg-white transition-all pr-10"
+                className="w-full px-4 py-3 bg-neutral-100 rounded-xl text-base outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all pr-10"
               />
               <span className="absolute right-3 top-3 text-neutral-400 text-sm">ft</span>
             </div>
@@ -131,7 +131,7 @@ export function StepBasics() {
                 placeholder="10"
                 min={0}
                 max={11}
-                className="w-full px-4 py-3 bg-neutral-100 rounded-xl text-base outline-none focus:ring-2 focus:ring-green-500 focus:bg-white transition-all pr-10"
+                className="w-full px-4 py-3 bg-neutral-100 rounded-xl text-base outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all pr-10"
               />
               <span className="absolute right-3 top-3 text-neutral-400 text-sm">in</span>
             </div>
@@ -143,7 +143,7 @@ export function StepBasics() {
               value={data.heightCm ?? ""}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setHeightMetric(e.target.value)}
               placeholder="175"
-              className="w-full px-4 py-3 bg-neutral-100 rounded-xl text-base outline-none focus:ring-2 focus:ring-green-500 focus:bg-white transition-all pr-12"
+              className="w-full px-4 py-3 bg-neutral-100 rounded-xl text-base outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all pr-12"
             />
             <span className="absolute right-3 top-3 text-neutral-400 text-sm">cm</span>
           </div>
@@ -160,7 +160,7 @@ export function StepBasics() {
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setWeight(e.target.value)}
             placeholder={isImperial ? "185" : "84"}
             step="0.1"
-            className="w-full px-4 py-3 bg-neutral-100 rounded-xl text-base outline-none focus:ring-2 focus:ring-green-500 focus:bg-white transition-all pr-12"
+            className="w-full px-4 py-3 bg-neutral-100 rounded-xl text-base outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all pr-12"
           />
           <span className="absolute right-3 top-3 text-neutral-400 text-sm">
             {isImperial ? "lbs" : "kg"}
@@ -171,7 +171,7 @@ export function StepBasics() {
       <button
         onClick={nextStep}
         disabled={!canContinue}
-        className="w-full py-3 bg-green-500 text-white font-semibold rounded-xl hover:bg-green-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        className="w-full py-3 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
       >
         Continue
       </button>

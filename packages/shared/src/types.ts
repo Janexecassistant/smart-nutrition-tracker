@@ -21,6 +21,18 @@ export type FoodSource = "usda" | "off" | "admin" | "community";
 
 export type TargetSource = "auto" | "manual" | "hybrid";
 
+export type HealthFocus =
+  | "pregnancy"
+  | "diabetic"
+  | "celiac"
+  | "low_sodium"
+  | "heart_healthy"
+  | "kidney_friendly"
+  | "ibs_fodmap"
+  | "anti_inflammatory"
+  | "pcos"
+  | "none";
+
 export type DietaryPreference =
   | "vegetarian"
   | "vegan"
@@ -123,6 +135,7 @@ export interface UserProfile {
   currentWeightKg: number | null;
   activityLevel: ActivityLevel | null;
   goal: Goal | null;
+  healthFocus: HealthFocus[];
   targetPaceKgPerWeek: number | null;
   dietaryPreferences: DietaryPreference[];
   allergies: string[];

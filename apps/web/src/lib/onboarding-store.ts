@@ -4,6 +4,7 @@ import { create } from "zustand";
 import type {
   Sex,
   Goal,
+  HealthFocus,
   ActivityLevel,
   DietaryPreference,
   UnitSystem,
@@ -17,6 +18,7 @@ export interface OnboardingData {
   currentWeightKg: number | null;
   // Step 2: Goal
   goal: Goal | null;
+  healthFocus: HealthFocus[];
   // Step 3: Activity
   activityLevel: ActivityLevel | null;
   // Step 4: Pace
@@ -47,6 +49,7 @@ const initialData: OnboardingData = {
   heightCm: null,
   currentWeightKg: null,
   goal: null,
+  healthFocus: [],
   activityLevel: null,
   targetPaceKgPerWeek: 0.5,
   dietaryPreferences: [],

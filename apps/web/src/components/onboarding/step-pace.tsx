@@ -22,9 +22,9 @@ export function StepPace() {
           daily energy expenditure. No deficit or surplus needed.
         </p>
 
-        <div className="bg-green-50 rounded-xl p-6 text-center mb-6">
+        <div className="bg-emerald-50 rounded-xl p-6 text-center mb-6">
           <span className="text-4xl">⚖️</span>
-          <p className="text-sm text-green-700 mt-2 font-medium">
+          <p className="text-sm text-emerald-800 mt-2 font-medium">
             Your target will be set to your TDEE
           </p>
         </div>
@@ -34,7 +34,7 @@ export function StepPace() {
             updateData({ targetPaceKgPerWeek: 0 });
             nextStep();
           }}
-          className="w-full py-3 bg-green-500 text-white font-semibold rounded-xl hover:bg-green-600 transition-colors"
+          className="w-full py-3 bg-emerald-500 text-white font-semibold rounded-xl hover:bg-emerald-700 transition-colors"
         >
           Continue
         </button>
@@ -58,7 +58,7 @@ export function StepPace() {
             onClick={() => updateData({ targetPaceKgPerWeek: pace.value })}
             className={`w-full flex items-center justify-between p-3.5 rounded-xl text-left transition-all ${
               data.targetPaceKgPerWeek === pace.value
-                ? "bg-green-50 border-2 border-green-500"
+                ? "bg-emerald-50 border-2 border-emerald-600"
                 : "bg-white border border-neutral-200 hover:border-neutral-300"
             }`}
           >
@@ -66,7 +66,7 @@ export function StepPace() {
               <div className="flex items-center gap-2">
                 <span className="font-medium text-sm">{pace.label}</span>
                 {pace.tag && (
-                  <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                  <span className="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
                     {pace.tag}
                   </span>
                 )}
@@ -86,7 +86,7 @@ export function StepPace() {
 
       <button
         onClick={nextStep}
-        className="w-full py-3 bg-green-500 text-white font-semibold rounded-xl hover:bg-green-600 transition-colors"
+        className="w-full py-3 bg-emerald-500 text-white font-semibold rounded-xl hover:bg-emerald-700 transition-colors"
       >
         Continue
       </button>

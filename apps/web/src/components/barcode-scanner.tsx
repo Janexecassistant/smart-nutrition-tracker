@@ -1,151 +1,171 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 
 interface BarcodeScannerProps {
   onDetected: (barcode: string) => void;
   onError?: (error: string) => void;
 }
 
+const SUPPORTED_FORMATS = [
+  Html5QrcodeSupportedFormats.EAN_13,
+  Html5QrcodeSupportedFormats.EAN_8,
+  Html5QrcodeSupportedFormats.UPC_A,
+  Html5QrcodeSupportedFormats.UPC_E,
+  Html5QrcodeSupportedFormats.CODE_128,
+  Html5QrcodeSupportedFormats.CODE_39,
+];
+
 /**
- * Barcode scanner using the native BarcodeDetector API (Chrome/Edge/Android)
- * with a fallback manual entry input.
- *
- * For Safari/Firefox, users can type the barcode manually.
- * On mobile, the camera viewfinder makes scanning easy.
+ * Cross-browser barcode scanner using html5-qrcode.
+ * Works on Chrome, Safari, Firefox, Edge — including iOS Safari.
+ * Falls back to manual entry if camera is unavailable.
  */
 export function BarcodeScanner({ onDetected, onError }: BarcodeScannerProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const scanningRef = useRef(false);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [hasCamera, setHasCamera] = useState(true);
-  const [hasBarcodeAPI, setHasBarcodeAPI] = useState(true);
-  const [manualCode, setManualCode] = useState("");
   const [cameraActive, setCameraActive] = useState(false);
+  const [manualCode, setManualCode] = useState("");
+  const [starting, setStarting] = useState(true);
+  const detectedRef = useRef(false);
 
-  const stopCamera = useCallback(() => {
-    scanningRef.current = false;
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
+  const READER_ID = "snt-barcode-reader";
+
+  const stopScanner = useCallback(async () => {
+    try {
+      if (scannerRef.current) {
+        const state = scannerRef.current.getState();
+        // State 2 = scanning, 3 = paused
+        if (state === 2 || state === 3) {
+          await scannerRef.current.stop();
+        }
+        scannerRef.current.clear();
+        scannerRef.current = null;
+      }
+    } catch {
+      // Ignore cleanup errors
     }
     setCameraActive(false);
   }, []);
 
-  const startScanning = useCallback(async () => {
-    // Check for BarcodeDetector support
-    if (!("BarcodeDetector" in window)) {
-      setHasBarcodeAPI(false);
-      return;
-    }
+  const startScanner = useCallback(async () => {
+    // Avoid double-start
+    if (scannerRef.current) return;
+    if (detectedRef.current) return;
+
+    setStarting(true);
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
+      const scanner = new Html5Qrcode(READER_ID, {
+        formatsToSupport: SUPPORTED_FORMATS,
+        verbose: false,
       });
 
-      streamRef.current = stream;
-      setCameraActive(true);
+      scannerRef.current = scanner;
 
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
-
-      // @ts-ignore — BarcodeDetector is not yet in TS types
-      const detector = new (window as any).BarcodeDetector({
-        formats: ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39"],
-      });
-
-      scanningRef.current = true;
-
-      const scan = async () => {
-        if (!scanningRef.current || !videoRef.current) return;
-
-        try {
-          const barcodes = await detector.detect(videoRef.current);
-          if (barcodes.length > 0) {
-            const code = barcodes[0].rawValue;
-            if (code) {
-              stopCamera();
-              onDetected(code);
-              return;
-            }
+      await scanner.start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: { width: 280, height: 150 },
+          aspectRatio: 1.333,
+          disableFlip: false,
+        },
+        (decodedText) => {
+          // Successful scan
+          if (!detectedRef.current) {
+            detectedRef.current = true;
+            // Stop scanner before calling back to avoid state issues
+            scanner.stop().then(() => {
+              scanner.clear();
+              scannerRef.current = null;
+              setCameraActive(false);
+              onDetected(decodedText);
+            }).catch(() => {
+              onDetected(decodedText);
+            });
           }
-        } catch {
-          // Detection frame failed — keep going
+        },
+        () => {
+          // Scan frame with no result — this is normal, just keep scanning
         }
+      );
 
-        if (scanningRef.current) {
-          requestAnimationFrame(scan);
-        }
-      };
-
-      // Start scanning loop
-      requestAnimationFrame(scan);
+      setCameraActive(true);
+      setStarting(false);
     } catch (err: any) {
+      setStarting(false);
       setHasCamera(false);
-      onError?.("Camera access denied or unavailable");
+      const msg = err?.message || String(err);
+      if (msg.includes("Permission") || msg.includes("NotAllowed")) {
+        onError?.("Camera access denied. Please allow camera access and try again.");
+      } else if (msg.includes("NotFound") || msg.includes("no camera")) {
+        onError?.("No camera found on this device.");
+      } else {
+        onError?.("Could not start camera. You can enter the barcode manually below.");
+      }
     }
-  }, [onDetected, onError, stopCamera]);
+  }, [onDetected, onError]);
 
   useEffect(() => {
-    startScanning();
-    return () => stopCamera();
-  }, [startScanning, stopCamera]);
+    detectedRef.current = false;
+    startScanner();
+
+    return () => {
+      stopScanner();
+    };
+  }, [startScanner, stopScanner]);
 
   function handleManualSubmit() {
     const code = manualCode.trim();
     if (code.length >= 8) {
+      detectedRef.current = true;
+      stopScanner();
       onDetected(code);
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter") {
+      handleManualSubmit();
     }
   }
 
   return (
     <div className="space-y-3">
       {/* Camera viewfinder */}
-      {hasCamera && hasBarcodeAPI && (
-        <div className="relative rounded-xl overflow-hidden bg-black aspect-[4/3]">
-          <video
-            ref={videoRef}
-            className="w-full h-full object-cover"
-            playsInline
-            muted
-          />
-          {/* Scanning overlay */}
-          {cameraActive && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="w-64 h-32 border-2 border-green-400 rounded-lg relative">
-                <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-green-400 rounded-tl-lg" />
-                <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-green-400 rounded-tr-lg" />
-                <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-green-400 rounded-bl-lg" />
-                <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-green-400 rounded-br-lg" />
-                {/* Animated scan line */}
-                <div className="absolute left-2 right-2 h-0.5 bg-green-400 animate-pulse top-1/2" />
+      {hasCamera && (
+        <div className="relative rounded-xl overflow-hidden bg-black">
+          <div id={READER_ID} ref={containerRef} />
+
+          {/* Starting overlay */}
+          {starting && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-10">
+              <div className="text-center">
+                <div className="w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                <p className="text-white text-sm">Starting camera...</p>
               </div>
             </div>
           )}
-          {!cameraActive && (
-            <div className="absolute inset-0 flex items-center justify-center text-white text-sm">
-              Starting camera...
+
+          {/* Scanning indicator */}
+          {cameraActive && !starting && (
+            <div className="absolute bottom-2 left-0 right-0 flex justify-center z-10 pointer-events-none">
+              <div className="bg-black/60 backdrop-blur-sm px-3 py-1 rounded-full flex items-center gap-2">
+                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+                <span className="text-white text-xs">Scanning...</span>
+              </div>
             </div>
           )}
-          <canvas ref={canvasRef} className="hidden" />
         </div>
       )}
 
-      {/* No BarcodeDetector API */}
-      {!hasBarcodeAPI && (
-        <div className="bg-amber-50 text-amber-700 text-xs px-3 py-2 rounded-lg">
-          Your browser doesn't support barcode scanning natively. Use Chrome or Edge for camera scanning, or enter the barcode number below.
-        </div>
-      )}
-
-      {/* No camera */}
+      {/* No camera fallback */}
       {!hasCamera && (
         <div className="bg-amber-50 text-amber-700 text-xs px-3 py-2 rounded-lg">
-          Camera access denied. You can enter the barcode number manually below.
+          Camera not available. Enter the barcode number manually below.
         </div>
       )}
 
@@ -160,13 +180,14 @@ export function BarcodeScanner({ onDetected, onError }: BarcodeScannerProps) {
             inputMode="numeric"
             value={manualCode}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setManualCode(e.target.value)}
+            onKeyDown={handleKeyDown}
             placeholder="e.g. 5901234123457"
-            className="flex-1 px-3 py-2 bg-neutral-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-green-500 focus:bg-white"
+            className="flex-1 px-3 py-2 bg-neutral-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white"
           />
           <button
             onClick={handleManualSubmit}
             disabled={manualCode.trim().length < 8}
-            className="px-4 py-2 bg-green-500 text-white text-sm font-medium rounded-xl hover:bg-green-600 disabled:opacity-40 transition-colors"
+            className="px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-xl hover:bg-emerald-700 disabled:opacity-40 transition-colors"
           >
             Look up
           </button>

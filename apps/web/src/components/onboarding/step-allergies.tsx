@@ -92,12 +92,12 @@ export function StepAllergies() {
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCustomInput(e.target.value)}
             onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && addCustom()}
             placeholder="e.g., corn, sulfites..."
-            className="flex-1 px-4 py-3 bg-neutral-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-green-500 focus:bg-white transition-all"
+            className="flex-1 px-4 py-3 bg-neutral-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
           />
           <button
             onClick={addCustom}
             disabled={!customInput.trim()}
-            className="px-4 py-3 bg-green-500 text-white text-sm font-medium rounded-xl hover:bg-green-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="px-4 py-3 bg-emerald-600 text-white text-sm font-medium rounded-xl hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             Add
           </button>
@@ -125,14 +125,14 @@ export function StepAllergies() {
       )}
 
       {data.allergies.length === 0 && (
-        <div className="bg-green-50 text-green-700 text-xs px-4 py-3 rounded-lg mb-4">
+        <div className="bg-emerald-50 text-emerald-800 text-xs px-4 py-3 rounded-lg mb-4">
           No allergies selected — all foods will be included in suggestions.
         </div>
       )}
 
       <button
         onClick={nextStep}
-        className="w-full py-3 bg-green-500 text-white font-semibold rounded-xl hover:bg-green-600 transition-colors"
+        className="w-full py-3 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 transition-colors"
       >
         {data.allergies.length === 0 ? "Skip — No Allergies" : "Continue"}
       </button>

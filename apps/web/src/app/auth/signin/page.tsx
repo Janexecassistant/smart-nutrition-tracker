@@ -35,7 +35,7 @@ export default function SignInPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold">
-            Smart<span className="text-green-500">Nutrition</span> Tracker
+            Smart<span className="text-emerald-600">Nutrition</span> Tracker
           </h1>
           <p className="text-neutral-500 mt-2">Welcome back</p>
         </div>
@@ -56,7 +56,7 @@ export default function SignInPage() {
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
               required
               placeholder="you@example.com"
-              className="w-full px-4 py-3 bg-neutral-100 rounded-xl text-base outline-none focus:ring-2 focus:ring-green-500 focus:bg-white transition-all"
+              className="w-full px-4 py-3 bg-neutral-100 rounded-xl text-base outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
             />
           </div>
 
@@ -68,12 +68,12 @@ export default function SignInPage() {
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
               required
               placeholder="Enter your password"
-              className="w-full px-4 py-3 bg-neutral-100 rounded-xl text-base outline-none focus:ring-2 focus:ring-green-500 focus:bg-white transition-all"
+              className="w-full px-4 py-3 bg-neutral-100 rounded-xl text-base outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
             />
           </div>
 
           <div className="text-right">
-            <a href="/auth/forgot-password" className="text-sm text-green-600 hover:underline">
+            <a href="/auth/forgot-password" className="text-sm text-emerald-700 hover:underline">
               Forgot password?
             </a>
           </div>
@@ -81,7 +81,7 @@ export default function SignInPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-green-500 text-white font-semibold rounded-xl hover:bg-green-600 disabled:opacity-50 transition-colors"
+            className="w-full py-3 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 disabled:opacity-50 transition-colors"
           >
             {loading ? "Signing in..." : "Sign In"}
           </button>
@@ -90,7 +90,7 @@ export default function SignInPage() {
         {/* Sign up link */}
         <p className="text-center text-sm text-neutral-500 mt-6">
           Don't have an account?{" "}
-          <a href="/auth/signup" className="text-green-600 font-medium hover:underline">
+          <a href="/auth/signup" className="text-emerald-700 font-medium hover:underline">
             Create one
           </a>
         </p>

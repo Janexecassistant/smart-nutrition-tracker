@@ -31,7 +31,7 @@ function LandingPage() {
     <main className="flex flex-col items-center justify-center min-h-screen p-8">
       <div className="max-w-2xl text-center space-y-6">
         <h1 className="text-5xl font-bold tracking-tight">
-          Smart<span className="text-green-500">Nutrition</span> Tracker
+          Smart<span className="text-emerald-600">Nutrition</span> Tracker
         </h1>
         <p className="text-xl text-neutral-500">
           Track your food. Hit your goals. Know what to eat next.
@@ -39,7 +39,7 @@ function LandingPage() {
         <div className="flex gap-4 justify-center pt-4">
           <a
             href="/auth/signup"
-            className="px-6 py-3 bg-green-500 text-white rounded-lg font-medium hover:bg-green-600 transition-colors"
+            className="px-6 py-3 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 transition-colors"
           >
             Get Started
           </a>

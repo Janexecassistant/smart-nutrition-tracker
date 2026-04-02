@@ -1,30 +1,33 @@
 @import "tailwindcss";
 
 :root {
-  /* Smart Nutrition Tracker brand colors */
-  --color-primary: #22c55e;
-  --color-primary-dark: #16a34a;
-  --color-accent: #6366f1;
-  --color-accent-light: #818cf8;
-  --color-bg: #f0f2f5;
+  /* Smart Nutrition Tracker — Emerald brand palette */
+  --color-primary: #059669;
+  --color-primary-dark: #047857;
+  --color-primary-light: #10b981;
+  --color-accent: #3b82f6;
+  --color-accent-light: #60a5fa;
+  --color-bg: #f8faf9;
   --color-surface: #ffffff;
-  --color-text: #1a1a2e;
-  --color-text-muted: #6b7280;
-  --color-border: #e2e5ea;
+  --color-surface-elevated: #ecfdf5;
+  --color-text: #0f172a;
+  --color-text-muted: #64748b;
+  --color-border: #e2e8f0;
   --color-danger: #ef4444;
   --color-warning: #f59e0b;
-  --color-success: #22c55e;
+  --color-success: #059669;
 
   /* Macro colors */
-  --color-protein: #6366f1;
+  --color-protein: #3b82f6;
   --color-carbs: #f59e0b;
-  --color-fat: #f43f5e;
-  --color-calories: #22c55e;
+  --color-fat: #ef4444;
+  --color-calories: #059669;
 
-  /* Gradients */
-  --gradient-header: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f4a2e 100%);
-  --gradient-card: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-  --gradient-ring-bg: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  /* Gradients — deep emerald header */
+  --gradient-header: linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%);
+  --gradient-card: linear-gradient(135deg, #ffffff 0%, #ecfdf5 100%);
+  --gradient-ring-bg: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  --gradient-hero: linear-gradient(160deg, #064e3b 0%, #059669 100%);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -57,11 +60,11 @@ html {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #a7f3d0;
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #6ee7b7;
 }
 
 /* Install prompt slide-up animation */

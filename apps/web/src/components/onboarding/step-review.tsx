@@ -40,7 +40,7 @@ export function StepReview({ onSubmit }: { onSubmit: () => void }) {
         </p>
         <button
           onClick={prevStep}
-          className="mt-4 text-green-600 font-medium text-sm"
+          className="mt-4 text-emerald-700 font-medium text-sm"
         >
           ← Go back
         </button>
@@ -83,7 +83,7 @@ export function StepReview({ onSubmit }: { onSubmit: () => void }) {
       </p>
 
       {/* Calorie target — hero card */}
-      <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-6 text-white text-center mb-4">
+      <div className="bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-2xl p-6 text-white text-center mb-4">
         <div className="text-sm font-medium opacity-90 mb-1">
           Daily Calorie Target
         </div>
@@ -177,6 +177,16 @@ export function StepReview({ onSubmit }: { onSubmit: () => void }) {
                 </div>
               </>
             )}
+          {(data.healthFocus || []).length > 0 && (
+            <>
+              <div className="text-neutral-500">Health Focus</div>
+              <div className="font-medium text-right capitalize">
+                {(data.healthFocus || [])
+                  .map((h) => h.replace("_", " "))
+                  .join(", ")}
+              </div>
+            </>
+          )}
           {data.allergies.length > 0 && (
             <>
               <div className="text-neutral-500">Allergies</div>
@@ -205,7 +215,7 @@ export function StepReview({ onSubmit }: { onSubmit: () => void }) {
       {/* Actions */}
       <button
         onClick={onSubmit}
-        className="w-full py-3 bg-green-500 text-white font-semibold rounded-xl hover:bg-green-600 transition-colors mb-2"
+        className="w-full py-3 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 transition-colors mb-2"
       >
         Looks great — let's go!
       </button>

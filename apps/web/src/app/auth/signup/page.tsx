@@ -44,7 +44,7 @@ export default function SignUpPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold">
-            Smart<span className="text-green-500">Nutrition</span> Tracker
+            Smart<span className="text-emerald-600">Nutrition</span> Tracker
           </h1>
           <p className="text-neutral-500 mt-2">Create your account</p>
         </div>
@@ -65,7 +65,7 @@ export default function SignUpPage() {
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
               required
               placeholder="you@example.com"
-              className="w-full px-4 py-3 bg-neutral-100 rounded-xl text-base outline-none focus:ring-2 focus:ring-green-500 focus:bg-white transition-all"
+              className="w-full px-4 py-3 bg-neutral-100 rounded-xl text-base outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
             />
           </div>
 
@@ -77,7 +77,7 @@ export default function SignUpPage() {
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
               required
               placeholder="At least 8 characters"
-              className="w-full px-4 py-3 bg-neutral-100 rounded-xl text-base outline-none focus:ring-2 focus:ring-green-500 focus:bg-white transition-all"
+              className="w-full px-4 py-3 bg-neutral-100 rounded-xl text-base outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
             />
           </div>
 
@@ -89,14 +89,14 @@ export default function SignUpPage() {
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
               required
               placeholder="Re-enter your password"
-              className="w-full px-4 py-3 bg-neutral-100 rounded-xl text-base outline-none focus:ring-2 focus:ring-green-500 focus:bg-white transition-all"
+              className="w-full px-4 py-3 bg-neutral-100 rounded-xl text-base outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-green-500 text-white font-semibold rounded-xl hover:bg-green-600 disabled:opacity-50 transition-colors"
+            className="w-full py-3 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 disabled:opacity-50 transition-colors"
           >
             {loading ? "Creating account..." : "Create Account"}
           </button>
@@ -128,7 +128,7 @@ export default function SignUpPage() {
         {/* Sign in link */}
         <p className="text-center text-sm text-neutral-500 mt-6">
           Already have an account?{" "}
-          <a href="/auth/signin" className="text-green-600 font-medium hover:underline">
+          <a href="/auth/signin" className="text-emerald-700 font-medium hover:underline">
             Sign in
           </a>
         </p>

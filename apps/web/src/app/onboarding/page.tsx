@@ -38,6 +38,7 @@ export default function OnboardingPage() {
             heightCm: data.heightCm,
             currentWeightKg: data.currentWeightKg,
             goal: data.goal,
+            healthFocus: (data.healthFocus || []).filter((f) => f !== "none"),
             activityLevel: data.activityLevel,
             targetPaceKgPerWeek: data.targetPaceKgPerWeek,
             dietaryPreferences: data.dietaryPreferences.filter(
@@ -126,7 +127,7 @@ export default function OnboardingPage() {
               </button>
             )}
             <span className="text-sm font-semibold text-neutral-800">
-              Smart<span className="text-green-500">Nutrition</span>
+              Smart<span className="text-emerald-600">Nutrition</span>
             </span>
           </div>
           <span className="text-xs text-neutral-400">
@@ -138,7 +139,7 @@ export default function OnboardingPage() {
       {/* Progress bar */}
       <div className="bg-neutral-200 h-1">
         <div
-          className="bg-green-500 h-full transition-all duration-300 ease-out"
+          className="bg-emerald-600 h-full transition-all duration-300 ease-out"
           style={{ width: `${progressPct}%` }}
         />
       </div>

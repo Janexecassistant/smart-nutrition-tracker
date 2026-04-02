@@ -29,6 +29,7 @@ export const userProfiles = pgTable("user_profiles", {
     ],
   }),
   goal: text("goal", { enum: ["lose", "gain", "maintain"] }),
+  healthFocus: text("health_focus").array().default([]),
   targetPaceKgPerWeek: numeric("target_pace_kg_per_week", {
     precision: 3,
     scale: 2,

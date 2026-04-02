@@ -24,11 +24,12 @@ interface FoodResult {
   fatG: string | number;
   servingSizeG: string | number;
   servingLabel?: string | null;
+  imageUrl?: string | null;
 }
 
 const SLOT_COLORS: Record<string, { gradient: string; accent: string; bg: string }> = {
   breakfast: { gradient: "from-amber-400 to-orange-500", accent: "#f59e0b", bg: "#fffbeb" },
-  lunch:     { gradient: "from-green-400 to-emerald-500", accent: "#22c55e", bg: "#f0fdf4" },
+  lunch:     { gradient: "from-emerald-500 to-emerald-600", accent: "#059669", bg: "#f0fdf4" },
   dinner:    { gradient: "from-indigo-400 to-purple-500", accent: "#6366f1", bg: "#eef2ff" },
   snack:     { gradient: "from-rose-400 to-pink-500",    accent: "#f43f5e", bg: "#fff1f2" },
 };
@@ -143,6 +144,7 @@ export function AddFoodModal({ slot, isOpen, onClose, onAdded }: AddFoodModalPro
           calories: data.food.calories, proteinG: data.food.proteinG,
           carbsG: data.food.carbsG, fatG: data.food.fatG,
           servingSizeG: data.food.servingSizeG, servingLabel: data.food.servingLabel,
+          imageUrl: data.food.imageUrl || null,
         });
       } else { setScanError(`No food found for barcode ${barcode}`); }
     } catch { setScanError(`No food found for barcode ${barcode}`); }
@@ -183,23 +185,35 @@ export function AddFoodModal({ slot, isOpen, onClose, onAdded }: AddFoodModalPro
     return (
       <div className="space-y-3">
         <div className="rounded-xl p-3 border" style={{ backgroundColor: colors.bg, borderColor: `${colors.accent}30` }}>
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="font-semibold text-sm text-neutral-800">{food.name}</p>
-              {food.brand && <p className="text-xs text-neutral-500">{food.brand}</p>}
-              <p className="text-xs text-neutral-400 mt-1">
-                Per serving ({Number(food.servingSizeG)}g): {Number(food.calories)} cal
-              </p>
-            </div>
-            {tab === "scan" && (
-              <button
-                onClick={() => { setScanResult(null); setScanError(""); }}
-                className="text-xs font-medium whitespace-nowrap ml-2"
-                style={{ color: colors.accent }}
-              >
-                Scan another
-              </button>
+          <div className="flex items-start gap-3">
+            {/* Product image */}
+            {food.imageUrl && (
+              <img
+                src={food.imageUrl}
+                alt={food.name}
+                className="w-14 h-14 rounded-lg object-cover flex-shrink-0 bg-white border border-neutral-200"
+              />
             )}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start justify-between">
+                <div className="min-w-0">
+                  <p className="font-semibold text-sm text-neutral-800 truncate">{food.name}</p>
+                  {food.brand && <p className="text-xs text-neutral-500 truncate">{food.brand}</p>}
+                  <p className="text-xs text-neutral-400 mt-1">
+                    Per serving ({Number(food.servingSizeG)}g): {Number(food.calories)} cal
+                  </p>
+                </div>
+                {tab === "scan" && (
+                  <button
+                    onClick={() => { setScanResult(null); setScanError(""); }}
+                    className="text-xs font-medium whitespace-nowrap ml-2"
+                    style={{ color: colors.accent }}
+                  >
+                    Scan another
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -217,7 +231,7 @@ export function AddFoodModal({ slot, isOpen, onClose, onAdded }: AddFoodModalPro
         {/* Macro preview pills */}
         <div className="grid grid-cols-4 gap-2 text-center text-xs">
           {[
-            { label: "cal", value: Math.round(Number(food.calories) * mult), color: "#22c55e", bg: "#f0fdf4" },
+            { label: "cal", value: Math.round(Number(food.calories) * mult), color: "#059669", bg: "#f0fdf4" },
             { label: "protein", value: `${Math.round(Number(food.proteinG) * mult)}g`, color: "#6366f1", bg: "#eef2ff" },
             { label: "carbs", value: `${Math.round(Number(food.carbsG) * mult)}g`, color: "#f59e0b", bg: "#fffbeb" },
             { label: "fat", value: `${Math.round(Number(food.fatG) * mult)}g`, color: "#f43f5e", bg: "#fff1f2" },

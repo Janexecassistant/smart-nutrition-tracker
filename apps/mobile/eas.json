@@ -12,8 +12,8 @@
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "http://localhost:3001",
-        "EXPO_PUBLIC_SUPABASE_URL": "http://localhost:54321",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": ""
+        "EXPO_PUBLIC_SUPABASE_URL": "https://ptakhmjwuyfpnuxuqhow.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_Budzsr1vV3GDh7pSnvszdw_FWntiAte"
       },
       "channel": "development"
     },
@@ -23,33 +23,20 @@
         "simulator": false
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api-staging.smartnutritiontracker.com",
-        "EXPO_PUBLIC_SUPABASE_URL": "",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": ""
+        "EXPO_PUBLIC_API_URL": "https://sntapi-production.up.railway.app",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://ptakhmjwuyfpnuxuqhow.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_Budzsr1vV3GDh7pSnvszdw_FWntiAte"
       },
       "channel": "preview"
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.smartnutritiontracker.com",
-        "EXPO_PUBLIC_SUPABASE_URL": "",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": ""
+        "EXPO_PUBLIC_API_URL": "https://sntapi-production.up.railway.app",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://ptakhmjwuyfpnuxuqhow.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_Budzsr1vV3GDh7pSnvszdw_FWntiAte"
       },
       "channel": "production"
-    }
-  },
-  "submit": {
-    "production": {
-      "ios": {
-        "appleId": "",
-        "ascAppId": "",
-        "appleTeamId": ""
-      },
-      "android": {
-        "serviceAccountKeyPath": "./google-services.json",
-        "track": "internal"
-      }
     }
   }
 }

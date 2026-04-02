@@ -8,13 +8,11 @@
     "userInterfaceStyle": "automatic",
     "scheme": "snt",
     "newArchEnabled": true,
-
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#22c55e"
     },
-
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.smartnutritiontracker.app",
@@ -28,9 +26,11 @@
       "config": {
         "usesNonExemptEncryption": false
       },
-      "associatedDomains": ["applinks:smartnutritiontracker.com"]
+      "associatedDomains": [
+        "applinks:smartnutritiontracker.com",
+        "applinks:smartnutritiontracker.com"
+      ]
     },
-
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -40,7 +40,11 @@
       "versionCode": 1,
       "permissions": [
         "android.permission.CAMERA",
-        "android.permission.VIBRATE"
+        "android.permission.VIBRATE",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA",
+        "android.permission.VIBRATE",
+        "android.permission.RECORD_AUDIO"
       ],
       "intentFilters": [
         {
@@ -53,11 +57,28 @@
               "pathPrefix": "/app"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        },
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "smartnutritiontracker.com",
+              "pathPrefix": "/app"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
-
     "plugins": [
       [
         "expo-camera",
@@ -66,7 +87,21 @@
         }
       ]
     ],
-
-    "owner": "smartnutritiontracker"
+    "_comment": "owner defaults to your Expo account",
+    "extra": {
+      "EXPO_PUBLIC_API_URL": "https://sntapi-production.up.railway.app",
+      "EXPO_PUBLIC_SUPABASE_URL": "https://ptakhmjwuyfpnuxuqhow.supabase.co",
+      "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_Budzsr1vV3GDh7pSnvszdw_FWntiAte",
+      "eas": {
+        "projectId": "be10b52b-3f1b-45d9-8f8d-6efc7a27f46f"
+      }
+    },
+    "owner": "janbestassistantever",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/be10b52b-3f1b-45d9-8f8d-6efc7a27f46f"
+    }
   }
 }

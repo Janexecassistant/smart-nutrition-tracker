@@ -1,130 +1,257 @@
-import { View, Text, ScrollView, Pressable, StyleSheet } from "react-native";
+import { useState, useCallback } from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  RefreshControl,
+  ActivityIndicator,
+} from "react-native";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "expo-router";
+import { api } from "../../src/lib/api";
+
+interface MealItem {
+  id: string;
+  foodName: string;
+  calories: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+}
+
+interface DailyLog {
+  meals: {
+    breakfast: MealItem[];
+    lunch: MealItem[];
+    dinner: MealItem[];
+    snack: MealItem[];
+  };
+  totals: {
+    calories: number;
+    proteinG: number;
+    carbsG: number;
+    fatG: number;
+  };
+}
+
+interface Profile {
+  targets: {
+    caloriesTarget: number;
+    proteinG: number;
+    carbsG: number;
+    fatG: number;
+  };
+  displayName?: string;
+}
+
+const MEAL_SLOTS = [
+  { key: "breakfast" as const, label: "Breakfast", emoji: "🌅" },
+  { key: "lunch" as const, label: "Lunch", emoji: "☀️" },
+  { key: "dinner" as const, label: "Dinner", emoji: "🌙" },
+  { key: "snack" as const, label: "Snack", emoji: "🍎" },
+];
 
 export default function DashboardScreen() {
-  const calories = { consumed: 820, target: 2100 };
-  const macros = {
-    protein: { consumed: 62, target: 150 },
-    carbs: { consumed: 95, target: 210 },
-    fat: { consumed: 28, target: 70 },
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const { data: profile, isLoading: profileLoading } = useQuery({
+    queryKey: ["profile"],
+    queryFn: () => api.get<Profile>("/profile"),
+  });
+
+  const { data: dailyLog, isLoading: logLoading } = useQuery({
+    queryKey: ["logs", "today"],
+    queryFn: () => api.get<DailyLog>("/logs/today"),
+  });
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await queryClient.invalidateQueries({ queryKey: ["logs", "today"] });
+    await queryClient.invalidateQueries({ queryKey: ["profile"] });
+    setRefreshing(false);
+  }, []);
+
+  const targets = profile?.targets;
+  const totals = dailyLog?.totals || { calories: 0, proteinG: 0, carbsG: 0, fatG: 0 };
+  const calorieGoal = targets?.caloriesTarget || 2000;
+  const calorieProgress = Math.min(totals.calories / calorieGoal, 1);
+  const caloriesRemaining = Math.max(calorieGoal - totals.calories, 0);
+
+  if (profileLoading && logLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#059669" />
+      </View>
+    );
+  }
+
+  const greeting = () => {
+    const h = new Date().getHours();
+    if (h < 12) return "Good morning";
+    if (h < 18) return "Good afternoon";
+    return "Good evening";
   };
-  const remaining = calories.target - calories.consumed;
-  const pct = Math.round((calories.consumed / calories.target) * 100);
 
   return (
-    <ScrollView style={s.container} showsVerticalScrollIndicator={false}>
-      <View style={s.header}>
-        <Text style={s.greeting}>Good morning! 👋</Text>
-        <Text style={s.date}>Tuesday, April 1</Text>
-      </View>
-
-      {/* Calorie Ring */}
-      <View style={s.calorieCard}>
-        <View style={s.ringContainer}>
-          <View style={[s.ring, { borderColor: "rgba(34,197,94," + Math.max(0.15, pct / 100) + ")" }]}>
-            <Text style={s.calNum}>{calories.consumed}</Text>
-            <Text style={s.calUnit}>cal consumed</Text>
+    <ScrollView
+      style={styles.container}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+    >
+      {/* ── Gradient Header ────────────────────────────── */}
+      <View style={styles.heroHeader}>
+        <View style={styles.heroTop}>
+          <View>
+            <Text style={styles.heroGreeting}>{greeting()}</Text>
+            <Text style={styles.heroName}>
+              {profile?.displayName?.split(" ")[0] || "Dashboard"}
+            </Text>
+          </View>
+          <View style={styles.heroDateBox}>
+            <Text style={styles.heroDay}>
+              {new Date().toLocaleDateString("en-US", { weekday: "long" })}
+            </Text>
+            <Text style={styles.heroDate}>
+              {new Date().toLocaleDateString("en-US", { month: "long", day: "numeric" })}
+            </Text>
           </View>
         </View>
-        <View style={s.calStats}>
-          <View style={s.calStat}>
-            <Text style={s.statVal}>{calories.target}</Text>
-            <Text style={s.statLbl}>Target</Text>
+
+        {/* Calorie ring in header */}
+        <View style={styles.heroCalories}>
+          <Text style={styles.heroCalCount}>{totals.calories}</Text>
+          <Text style={styles.heroCalLabel}>of {calorieGoal} kcal</Text>
+          <View style={styles.heroBar}>
+            <View
+              style={[
+                styles.heroBarFill,
+                {
+                  width: `${calorieProgress * 100}%`,
+                  backgroundColor: calorieProgress > 1 ? "#fca5a5" : "#6ee7b7",
+                },
+              ]}
+            />
           </View>
-          <View style={[s.calStat, s.statBorder]}>
-            <Text style={[s.statVal, { color: "#22c55e" }]}>{remaining}</Text>
-            <Text style={s.statLbl}>Remaining</Text>
-          </View>
+          <Text style={styles.heroRemaining}>
+            {caloriesRemaining} kcal remaining
+          </Text>
         </View>
       </View>
 
       {/* Macros */}
-      <View style={s.card}>
-        <Text style={s.section}>Macros</Text>
-        <View style={s.macroRow}>
-          <MacroBar label="Protein" consumed={macros.protein.consumed} target={macros.protein.target} color="#3b82f6" />
-          <MacroBar label="Carbs" consumed={macros.carbs.consumed} target={macros.carbs.target} color="#f59e0b" />
-          <MacroBar label="Fat" consumed={macros.fat.consumed} target={macros.fat.target} color="#ef4444" />
-        </View>
+      <View style={styles.macroRow}>
+        <MacroChip label="Protein" current={totals.proteinG} target={targets?.proteinG || 150} color="#3b82f6" />
+        <MacroChip label="Carbs" current={totals.carbsG} target={targets?.carbsG || 200} color="#f59e0b" />
+        <MacroChip label="Fat" current={totals.fatG} target={targets?.fatG || 65} color="#ef4444" />
       </View>
 
-      {/* Meals */}
-      <MealSlot name="Breakfast" calories={320} items={["Oatmeal with banana", "Greek yogurt"]} />
-      <MealSlot name="Lunch" calories={500} items={["Chicken breast", "Brown rice", "Mixed greens"]} />
-      <MealSlot name="Dinner" calories={0} items={[]} />
-      <MealSlot name="Snack" calories={0} items={[]} />
-      <View style={{ height: 24 }} />
+      {/* Meal Slots */}
+      {MEAL_SLOTS.map(({ key, label, emoji }) => {
+        const items = dailyLog?.meals?.[key] || [];
+        const slotCals = items.reduce((s, i) => s + i.calories, 0);
+        return (
+          <View key={key} style={styles.mealCard}>
+            <View style={styles.mealHeader}>
+              <Text style={styles.mealEmoji}>{emoji}</Text>
+              <Text style={styles.mealTitle}>{label}</Text>
+              {slotCals > 0 && <Text style={styles.mealCals}>{slotCals} kcal</Text>}
+            </View>
+            {items.map((item) => (
+              <View key={item.id} style={styles.foodItem}>
+                <Text style={styles.foodName}>{item.foodName}</Text>
+                <Text style={styles.foodCals}>{item.calories}</Text>
+              </View>
+            ))}
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={() => router.push({ pathname: "/add-food", params: { slot: key } })}
+            >
+              <Text style={styles.addButtonText}>+ Add Food</Text>
+            </TouchableOpacity>
+          </View>
+        );
+      })}
+
+      <View style={{ height: 32 }} />
     </ScrollView>
   );
 }
 
-function MacroBar({ label, consumed, target, color }: { label: string; consumed: number; target: number; color: string }) {
-  const pct = Math.min(100, target > 0 ? (consumed / target) * 100 : 0);
+function MacroChip({ label, current, target, color }: { label: string; current: number; target: number; color: string }) {
+  const pct = Math.min(current / target, 1);
   return (
-    <View style={s.macroItem}>
-      <View style={s.macroLabelRow}>
-        <View style={[s.dot, { backgroundColor: color }]} />
-        <Text style={s.macroLabel}>{label}</Text>
+    <View style={styles.macroChip}>
+      <Text style={styles.macroLabel}>{label}</Text>
+      <Text style={[styles.macroValue, { color }]}>{Math.round(current)}g</Text>
+      <View style={styles.macroBar}>
+        <View style={[styles.macroBarFill, { width: `${pct * 100}%`, backgroundColor: color }]} />
       </View>
-      <View style={s.barBg}>
-        <View style={[s.barFill, { width: pct + "%", backgroundColor: color }]} />
-      </View>
-      <Text style={s.macroVal}>{consumed}g / {target}g</Text>
+      <Text style={styles.macroTarget}>/ {target}g</Text>
     </View>
   );
 }
 
-function MealSlot({ name, calories, items }: { name: string; calories: number; items: string[] }) {
-  return (
-    <View style={s.mealCard}>
-      <View style={s.mealHeader}>
-        <View>
-          <Text style={s.mealTitle}>{name}</Text>
-          {calories > 0 && <Text style={s.mealCal}>{calories} cal</Text>}
-        </View>
-        <View style={s.addBtn}>
-          <Text style={s.addBtnText}>+</Text>
-        </View>
-      </View>
-      {items.length > 0 ? items.map((item, i) => (
-        <Text key={i} style={s.mealItem}>• {item}</Text>
-      )) : (
-        <Text style={s.empty}>Tap + to log food</Text>
-      )}
-    </View>
-  );
-}
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: "#f8faf9" },
+  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#f8faf9" },
 
-const s = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: "#fafafa" },
-  header: { marginBottom: 20, paddingTop: 8 },
-  greeting: { fontSize: 22, fontWeight: "bold", color: "#171717" },
-  date: { fontSize: 13, color: "#737373", marginTop: 2 },
-  calorieCard: { backgroundColor: "#fff", borderRadius: 20, padding: 24, marginBottom: 16, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
-  ringContainer: { alignItems: "center", marginBottom: 20 },
-  ring: { width: 140, height: 140, borderRadius: 70, borderWidth: 8, alignItems: "center", justifyContent: "center" },
-  calNum: { fontSize: 36, fontWeight: "bold", color: "#22c55e" },
-  calUnit: { fontSize: 12, color: "#737373" },
-  calStats: { flexDirection: "row", justifyContent: "center" },
-  calStat: { alignItems: "center", paddingHorizontal: 24 },
-  statBorder: { borderLeftWidth: 1, borderLeftColor: "#f0f0f0" },
-  statVal: { fontSize: 20, fontWeight: "bold", color: "#171717" },
-  statLbl: { fontSize: 11, color: "#a3a3a3", marginTop: 2 },
-  card: { backgroundColor: "#fff", borderRadius: 16, padding: 16, marginBottom: 16, shadowColor: "#000", shadowOpacity: 0.03, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 1 },
-  section: { fontSize: 15, fontWeight: "600", color: "#171717", marginBottom: 12 },
-  macroRow: { flexDirection: "row", gap: 12 },
-  macroItem: { flex: 1 },
-  macroLabelRow: { flexDirection: "row", alignItems: "center", marginBottom: 6 },
-  dot: { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
-  macroLabel: { fontSize: 12, color: "#525252" },
-  barBg: { height: 8, backgroundColor: "#f5f5f5", borderRadius: 4, overflow: "hidden" },
-  barFill: { height: "100%", borderRadius: 4 },
-  macroVal: { fontSize: 11, color: "#737373", marginTop: 4 },
-  mealCard: { backgroundColor: "#fff", borderRadius: 14, padding: 16, marginBottom: 10, shadowColor: "#000", shadowOpacity: 0.03, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 1 },
-  mealHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
-  mealTitle: { fontSize: 16, fontWeight: "600", color: "#171717" },
-  mealCal: { fontSize: 12, color: "#737373", marginTop: 2 },
-  mealItem: { fontSize: 14, color: "#525252", marginBottom: 4, paddingLeft: 4 },
-  addBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: "#f0fdf4", alignItems: "center", justifyContent: "center" },
-  addBtnText: { fontSize: 18, color: "#22c55e", fontWeight: "600" },
-  empty: { fontSize: 13, color: "#d4d4d4" },
+  // ── Hero header (dark emerald) ──────────────────────
+  heroHeader: {
+    backgroundColor: "#064e3b",
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 28,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
+  heroTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 20,
+  },
+  heroGreeting: { fontSize: 14, fontWeight: "500", color: "#6ee7b7" },
+  heroName: { fontSize: 26, fontWeight: "800", color: "#ffffff", marginTop: 2 },
+  heroDateBox: { alignItems: "flex-end" },
+  heroDay: { fontSize: 12, color: "#6ee7b7", opacity: 0.7 },
+  heroDate: { fontSize: 14, fontWeight: "600", color: "#d1fae5", marginTop: 1 },
+  heroCalories: { alignItems: "center" },
+  heroCalCount: { fontSize: 44, fontWeight: "800", color: "#ffffff" },
+  heroCalLabel: { fontSize: 14, color: "#a7f3d0", marginTop: -2 },
+  heroBar: {
+    width: "80%",
+    height: 6,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderRadius: 3,
+    overflow: "hidden",
+    marginTop: 12,
+  },
+  heroBarFill: { height: 6, borderRadius: 3 },
+  heroRemaining: { fontSize: 13, color: "#a7f3d0", marginTop: 8 },
+  macroRow: { flexDirection: "row", paddingHorizontal: 20, marginTop: 16, gap: 10 },
+  macroChip: {
+    flex: 1, backgroundColor: "#fff", borderRadius: 12, padding: 12, alignItems: "center",
+    shadowColor: "#064e3b", shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
+  },
+  macroLabel: { fontSize: 12, color: "#475569", marginBottom: 4 },
+  macroValue: { fontSize: 18, fontWeight: "700" },
+  macroBar: { width: "100%", height: 4, backgroundColor: "#f1f5f9", borderRadius: 2, marginTop: 6, overflow: "hidden" },
+  macroBarFill: { height: 4, borderRadius: 2 },
+  macroTarget: { fontSize: 11, color: "#94a3b8", marginTop: 4 },
+  mealCard: {
+    marginHorizontal: 20, marginTop: 16, backgroundColor: "#fff", borderRadius: 14,
+    padding: 16, shadowColor: "#064e3b", shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
+  },
+  mealHeader: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
+  mealEmoji: { fontSize: 20, marginRight: 8 },
+  mealTitle: { fontSize: 17, fontWeight: "600", color: "#0f172a", flex: 1 },
+  mealCals: { fontSize: 14, color: "#475569" },
+  foodItem: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 6, borderBottomWidth: 0.5, borderBottomColor: "#f1f5f9" },
+  foodName: { fontSize: 15, color: "#404040", flex: 1 },
+  foodCals: { fontSize: 15, color: "#475569" },
+  addButton: { paddingVertical: 10, alignItems: "center", marginTop: 4 },
+  addButtonText: { color: "#059669", fontSize: 15, fontWeight: "600" },
 });

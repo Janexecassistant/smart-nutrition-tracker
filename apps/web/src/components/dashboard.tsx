@@ -8,8 +8,8 @@ import type { MealSlot } from "@snt/shared";
 
 const MEAL_META: Record<string, { icon: string; gradient: string; accent: string }> = {
   breakfast: { icon: "🌅", gradient: "from-amber-400 to-orange-500", accent: "#f59e0b" },
-  lunch:     { icon: "☀️", gradient: "from-green-400 to-emerald-500", accent: "#22c55e" },
-  dinner:    { icon: "🌙", gradient: "from-indigo-400 to-purple-500", accent: "#6366f1" },
+  lunch:     { icon: "☀️", gradient: "from-emerald-400 to-emerald-600", accent: "#059669" },
+  dinner:    { icon: "🌙", gradient: "from-blue-400 to-indigo-500", accent: "#3b82f6" },
   snack:     { icon: "⚡", gradient: "from-rose-400 to-pink-500",    accent: "#f43f5e" },
 };
 
@@ -35,7 +35,7 @@ export function Dashboard() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-3 border-green-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-10 h-10 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin" />
           <p className="text-neutral-500 text-sm">Loading your day...</p>
         </div>
       </div>
@@ -48,7 +48,7 @@ export function Dashboard() {
   return (
     <div className="min-h-screen pb-8">
       {/* ── Gradient Header ──────────────────────────────────── */}
-      <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-900 text-white px-6 pt-8 pb-16 rounded-b-3xl shadow-lg">
+      <div className="bg-gradient-to-br from-emerald-900 via-emerald-800 to-emerald-700 text-white px-6 pt-8 pb-16 rounded-b-3xl shadow-xl">
         <div className="max-w-2xl mx-auto">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -58,12 +58,12 @@ export function Dashboard() {
               </h1>
             </div>
             <div className="text-right">
-              <p className="text-slate-400 text-xs">
+              <p className="text-emerald-400/60 text-xs">
                 {new Date().toLocaleDateString("en-US", {
                   weekday: "long",
                 })}
               </p>
-              <p className="text-slate-300 text-sm font-medium">
+              <p className="text-emerald-200 text-sm font-medium">
                 {new Date().toLocaleDateString("en-US", {
                   month: "long",
                   day: "numeric",
@@ -84,15 +84,15 @@ export function Dashboard() {
       <div className="max-w-2xl mx-auto px-4 -mt-8 space-y-4">
 
         {/* Macro Summary Card */}
-        <div className="bg-white rounded-2xl p-5 shadow-md border border-neutral-100/60">
-          <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-4">Macros</h3>
+        <div className="bg-white rounded-2xl p-5 shadow-md border border-emerald-100/60">
+          <h3 className="text-xs font-semibold text-emerald-700/60 uppercase tracking-wider mb-4">Macros</h3>
           <div className="grid grid-cols-3 gap-4">
             <MacroBar
               label="Protein"
               consumed={log?.totals?.proteinG ?? 0}
               target={Number(profile?.targets?.proteinG) || 150}
-              color="#6366f1"
-              bgColor="#eef2ff"
+              color="#3b82f6"
+              bgColor="#eff6ff"
             />
             <MacroBar
               label="Carbs"
@@ -105,8 +105,8 @@ export function Dashboard() {
               label="Fat"
               consumed={log?.totals?.fatG ?? 0}
               target={Number(profile?.targets?.fatG) || 65}
-              color="#f43f5e"
-              bgColor="#fff1f2"
+              color="#ef4444"
+              bgColor="#fef2f2"
             />
           </div>
         </div>
@@ -180,7 +180,7 @@ function CalorieRing({
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
             className="transition-all duration-700 ease-out"
-            style={{ filter: "drop-shadow(0 0 6px rgba(52, 211, 153, 0.4))" }}
+            style={{ filter: "drop-shadow(0 0 8px rgba(16, 185, 129, 0.5))" }}
           />
         </svg>
         {/* Center text */}
@@ -267,7 +267,7 @@ function MealSlotCard({
   const slotCals = items.reduce((sum, i) => sum + Number(i.calories || 0), 0);
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-neutral-100/60 overflow-hidden">
+    <div className="bg-white rounded-2xl shadow-sm border border-emerald-50 overflow-hidden">
       {/* Card header with colored accent */}
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-3">

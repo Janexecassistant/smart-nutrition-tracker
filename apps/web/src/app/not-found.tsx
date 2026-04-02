@@ -42,7 +42,7 @@ export default function NotFound() {
           style={{
             display: 'inline-block',
             padding: '12px 24px',
-            backgroundColor: '#22c55e',
+            backgroundColor: '#059669',
             color: 'white',
             borderRadius: '8px',
             textDecoration: 'none',
@@ -51,11 +51,11 @@ export default function NotFound() {
           }}
           onMouseOver={(e) => {
             const target = e.currentTarget as HTMLAnchorElement;
-            target.style.backgroundColor = '#16a34a';
+            target.style.backgroundColor = '#047857';
           }}
           onMouseOut={(e) => {
             const target = e.currentTarget as HTMLAnchorElement;
-            target.style.backgroundColor = '#22c55e';
+            target.style.backgroundColor = '#059669';
           }}
         >
           Go Home

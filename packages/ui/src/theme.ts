@@ -7,37 +7,48 @@
  */
 
 export const colors = {
-  // Brand
-  primary: "#22c55e",
-  primaryDark: "#16a34a",
-  primaryLight: "#86efac",
+  // ── Brand — Emerald Green ──────────────────────────────────────
+  primary: "#059669",        // emerald-600 — main brand color
+  primaryDark: "#047857",    // emerald-700 — hover / pressed states
+  primaryLight: "#10b981",   // emerald-500 — secondary actions
+  primaryLighter: "#34d399", // emerald-400 — rings, glows
+  primaryFaint: "#6ee7b7",   // emerald-300 — subtle highlights
+  primaryTint: "#d1fae5",    // emerald-100 — light backgrounds
+  primaryBg: "#ecfdf5",      // emerald-50  — tinted surface
+
   accent: "#3b82f6",
 
-  // Macros (consistent across all charts and UI)
+  // ── Gradient stops (for headers & hero cards) ──────────────────
+  gradientDark: "#064e3b",   // emerald-900
+  gradientMid: "#065f46",    // emerald-800
+  gradientLight: "#047857",  // emerald-700
+
+  // ── Macros (consistent across all charts and UI) ───────────────
   protein: "#3b82f6",
   carbs: "#f59e0b",
   fat: "#ef4444",
-  calories: "#22c55e",
+  calories: "#059669",
   fiber: "#8b5cf6",
 
-  // Semantic
-  success: "#22c55e",
+  // ── Semantic ───────────────────────────────────────────────────
+  success: "#059669",
   warning: "#f59e0b",
   danger: "#ef4444",
   info: "#3b82f6",
 
-  // Neutrals
-  bg: "#fafafa",
+  // ── Neutrals (light mode) ──────────────────────────────────────
+  bg: "#f8faf9",             // very subtle warm-green tint
   surface: "#ffffff",
+  surfaceElevated: "#f0fdf4", // emerald-50 — hero / featured cards
   surfaceHover: "#f5f5f5",
-  border: "#e5e5e5",
-  borderLight: "#f5f5f5",
-  text: "#171717",
-  textSecondary: "#525252",
-  textMuted: "#737373",
-  textPlaceholder: "#a3a3a3",
+  border: "#e2e8f0",         // slate-200 — slightly cooler borders
+  borderLight: "#f1f5f9",    // slate-100
+  text: "#0f172a",           // slate-900 — deeper contrast
+  textSecondary: "#475569",  // slate-600
+  textMuted: "#64748b",      // slate-500
+  textPlaceholder: "#94a3b8", // slate-400
 
-  // Dark mode
+  // ── Dark mode ──────────────────────────────────────────────────
   dark: {
     bg: "#0a0a0a",
     surface: "#171717",
@@ -91,24 +102,24 @@ export const fontWeights = {
 
 export const shadows = {
   sm: {
-    shadowColor: "#000",
-    shadowOpacity: 0.03,
+    shadowColor: "#064e3b",
+    shadowOpacity: 0.04,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 1 },
     elevation: 1,
   },
   md: {
-    shadowColor: "#000",
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    shadowColor: "#064e3b",
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
   },
   lg: {
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
+    shadowColor: "#064e3b",
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
   },
 } as const;

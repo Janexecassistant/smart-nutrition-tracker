@@ -53,7 +53,7 @@ export function StepActivity() {
             onClick={() => updateData({ activityLevel: level.value })}
             className={`w-full flex items-center justify-between p-3.5 rounded-xl text-left transition-all ${
               data.activityLevel === level.value
-                ? "bg-green-50 border-2 border-green-500"
+                ? "bg-emerald-50 border-2 border-emerald-600"
                 : "bg-white border border-neutral-200 hover:border-neutral-300"
             }`}
           >
@@ -71,7 +71,7 @@ export function StepActivity() {
       <button
         onClick={nextStep}
         disabled={!data.activityLevel}
-        className="w-full py-3 bg-green-500 text-white font-semibold rounded-xl hover:bg-green-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        className="w-full py-3 bg-emerald-500 text-white font-semibold rounded-xl hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
       >
         Continue
       </button>
