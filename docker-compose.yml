@@ -1,0 +1,54 @@
+version: "3.8"
+
+# Local development services for Smart Nutrition Tracker
+# Run: docker compose up -d
+
+services:
+  # PostgreSQL database
+  postgres:
+    image: postgres:16-alpine
+    container_name: snt-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: snt
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Redis (for caching and background jobs)
+  redis:
+    image: redis:7-alpine
+    container_name: snt-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Typesense (food search engine)
+  typesense:
+    image: typesense/typesense:27.1
+    container_name: snt-search
+    environment:
+      TYPESENSE_DATA_DIR: /data
+      TYPESENSE_API_KEY: snt-dev-key
+    ports:
+      - "8108:8108"
+    volumes:
+      - typesensedata:/data
+
+volumes:
+  pgdata:
+  redisdata:
+  typesensedata:

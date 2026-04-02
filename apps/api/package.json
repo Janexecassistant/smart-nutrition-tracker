@@ -1,0 +1,27 @@
+{
+  "name": "@snt/api",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "bun --env-file=../../.env run --watch src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target bun",
+    "start": "bun run dist/index.js",
+    "type-check": "tsc --noEmit",
+    "sync-typesense": "bun run src/services/typesense-sync.ts"
+  },
+  "dependencies": {
+    "hono": "^4.6.0",
+    "@hono/zod-validator": "^0.4.0",
+    "@supabase/supabase-js": "^2.47.0",
+    "@snt/shared": "*",
+    "@snt/db": "*",
+    "@snt/nutrition": "*",
+    "drizzle-orm": "^0.38.0",
+    "typesense": "^2.0.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.0",
+    "typescript": "^5.7.0"
+  }
+}

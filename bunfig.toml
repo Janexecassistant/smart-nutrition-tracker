@@ -1,0 +1,7 @@
+[install]
+# Use standard node_modules layout instead of Bun's .bun symlink cache.
+# Required for Metro bundler compatibility.
+node-modules-bundle = false
+
+[install.lockfile]
+save = true

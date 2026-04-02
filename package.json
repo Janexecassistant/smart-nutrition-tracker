@@ -1,0 +1,26 @@
+{
+  "name": "smart-nutrition-tracker",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "type-check": "turbo type-check",
+    "db:generate": "turbo db:generate --filter=@snt/db",
+    "db:migrate": "turbo db:migrate --filter=@snt/db",
+    "db:seed": "turbo db:seed --filter=@snt/db",
+    "clean": "turbo clean && rm -rf node_modules"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "typescript": "^5.7.0"
+  },
+  "packageManager": "npm@11.0.0",
+  "engines": {
+    "node": ">=20"
+  }
+}
