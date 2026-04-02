@@ -2,6 +2,10 @@ import type { Metadata, Viewport } from "next";
 import { RootLayoutClient } from "@/components/root-layout-client";
 import "./globals.css";
 
+// Prevent static generation to avoid useContext errors during SSR
+// The RootLayoutClient provider is client-side only
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Smart Nutrition Tracker",
   description:
