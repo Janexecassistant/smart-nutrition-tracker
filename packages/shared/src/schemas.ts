@@ -20,6 +20,19 @@ export const FoodTypeSchema = z.enum(["global", "custom", "recipe", "quick_add"]
 
 export const UnitSystemSchema = z.enum(["metric", "imperial"]);
 
+export const HealthFocusSchema = z.enum([
+  "pregnancy",
+  "diabetic",
+  "celiac",
+  "low_sodium",
+  "heart_healthy",
+  "kidney_friendly",
+  "ibs_fodmap",
+  "anti_inflammatory",
+  "pcos",
+  "none",
+]);
+
 export const DietaryPreferenceSchema = z.enum([
   "vegetarian",
   "vegan",
@@ -41,6 +54,7 @@ export const OnboardingProfileSchema = z.object({
   currentWeightKg: z.number().min(20).max(500),
   activityLevel: ActivityLevelSchema,
   goal: GoalSchema,
+  healthFocus: z.array(HealthFocusSchema).default([]),
   targetPaceKgPerWeek: z.number().min(0).max(1.0),
   dietaryPreferences: z.array(DietaryPreferenceSchema).default([]),
   allergies: z.array(z.string()).default([]),
@@ -129,8 +143,8 @@ export type LogWeightInput = z.infer<typeof LogWeightSchema>;
 
 export const FoodSearchSchema = z.object({
   query: z.string().min(1).max(200),
-  limit: z.number().int().min(1).max(50).default(20),
-  offset: z.number().int().min(0).default(0),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+  offset: z.coerce.number().int().min(0).default(0),
 });
 
 export type FoodSearchInput = z.infer<typeof FoodSearchSchema>;
