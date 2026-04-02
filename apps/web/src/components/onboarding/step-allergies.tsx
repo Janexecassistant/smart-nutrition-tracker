@@ -89,8 +89,8 @@ export function StepAllergies() {
           <input
             type="text"
             value={customInput}
-            onChange={(e) => setCustomInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && addCustom()}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCustomInput(e.target.value)}
+            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && addCustom()}
             placeholder="e.g., corn, sulfites..."
             className="flex-1 px-4 py-3 bg-neutral-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-green-500 focus:bg-white transition-all"
           />

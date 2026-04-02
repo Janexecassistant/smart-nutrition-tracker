@@ -159,7 +159,7 @@ export function BarcodeScanner({ onDetected, onError }: BarcodeScannerProps) {
             type="text"
             inputMode="numeric"
             value={manualCode}
-            onChange={(e) => setManualCode(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setManualCode(e.target.value)}
             placeholder="e.g. 5901234123457"
             className="flex-1 px-3 py-2 bg-neutral-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-green-500 focus:bg-white"
           />

@@ -79,7 +79,7 @@ export function StepBasics() {
         <input
           type="date"
           value={data.dateOfBirth}
-          onChange={(e) => updateData({ dateOfBirth: e.target.value })}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateData({ dateOfBirth: e.target.value })}
           max={new Date().toISOString().split("T")[0]}
           className="w-full px-4 py-3 bg-neutral-100 rounded-xl text-base outline-none focus:ring-2 focus:ring-green-500 focus:bg-white transition-all"
         />
@@ -115,7 +115,7 @@ export function StepBasics() {
               <input
                 type="number"
                 value={feet}
-                onChange={(e) => setFeet(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFeet(e.target.value)}
                 placeholder="5"
                 min={3}
                 max={8}
@@ -127,7 +127,7 @@ export function StepBasics() {
               <input
                 type="number"
                 value={inches}
-                onChange={(e) => setInches(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInches(e.target.value)}
                 placeholder="10"
                 min={0}
                 max={11}
@@ -141,7 +141,7 @@ export function StepBasics() {
             <input
               type="number"
               value={data.heightCm ?? ""}
-              onChange={(e) => setHeightMetric(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setHeightMetric(e.target.value)}
               placeholder="175"
               className="w-full px-4 py-3 bg-neutral-100 rounded-xl text-base outline-none focus:ring-2 focus:ring-green-500 focus:bg-white transition-all pr-12"
             />
@@ -157,7 +157,7 @@ export function StepBasics() {
           <input
             type="number"
             value={displayWeight ?? ""}
-            onChange={(e) => setWeight(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setWeight(e.target.value)}
             placeholder={isImperial ? "185" : "84"}
             step="0.1"
             className="w-full px-4 py-3 bg-neutral-100 rounded-xl text-base outline-none focus:ring-2 focus:ring-green-500 focus:bg-white transition-all pr-12"

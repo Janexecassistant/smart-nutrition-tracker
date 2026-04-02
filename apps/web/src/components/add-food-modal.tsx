@@ -207,7 +207,7 @@ export function AddFoodModal({ slot, isOpen, onClose, onAdded }: AddFoodModalPro
           <label className="text-xs text-neutral-500 block mb-1">Number of servings</label>
           <input
             type="number" value={servings}
-            onChange={(e) => setServings(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setServings(e.target.value)}
             min="0.25" step="0.25"
             className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:ring-2 focus:border-transparent transition-all"
             style={{ "--tw-ring-color": `${colors.accent}40` } as any}
@@ -289,7 +289,7 @@ export function AddFoodModal({ slot, isOpen, onClose, onAdded }: AddFoodModalPro
                 <input
                   ref={searchRef}
                   type="text" value={query}
-                  onChange={(e) => handleQueryChange(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleQueryChange(e.target.value)}
                   placeholder="Search for a food..."
                   className="w-full pl-9 pr-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:ring-2 focus:bg-white transition-all"
                   style={{ "--tw-ring-color": `${colors.accent}40` } as any}
@@ -398,7 +398,7 @@ export function AddFoodModal({ slot, isOpen, onClose, onAdded }: AddFoodModalPro
             <div className="space-y-3">
               <div>
                 <label className="text-xs text-neutral-500 block mb-1">Food name *</label>
-                <input type="text" value={quickName} onChange={(e) => setQuickName(e.target.value)}
+                <input type="text" value={quickName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuickName(e.target.value)}
                   placeholder="e.g. Chicken breast"
                   className="w-full px-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:ring-2 focus:bg-white transition-all"
                   style={{ "--tw-ring-color": `${colors.accent}40` } as any}
@@ -406,7 +406,7 @@ export function AddFoodModal({ slot, isOpen, onClose, onAdded }: AddFoodModalPro
               </div>
               <div>
                 <label className="text-xs text-neutral-500 block mb-1">Calories *</label>
-                <input type="number" value={quickCal} onChange={(e) => setQuickCal(e.target.value)}
+                <input type="number" value={quickCal} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuickCal(e.target.value)}
                   placeholder="0"
                   className="w-full px-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:ring-2 focus:bg-white transition-all"
                   style={{ "--tw-ring-color": `${colors.accent}40` } as any}
@@ -420,7 +420,7 @@ export function AddFoodModal({ slot, isOpen, onClose, onAdded }: AddFoodModalPro
                 ].map((f) => (
                   <div key={f.label}>
                     <label className="text-xs block mb-1" style={{ color: f.color }}>{f.label}</label>
-                    <input type="number" value={f.value} onChange={(e) => f.set(e.target.value)}
+                    <input type="number" value={f.value} onChange={(e: React.ChangeEvent<HTMLInputElement>) => f.set(e.target.value)}
                       placeholder="0"
                       className="w-full px-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:ring-2 focus:bg-white transition-all"
                       style={{ "--tw-ring-color": `${f.color}40` } as any}
