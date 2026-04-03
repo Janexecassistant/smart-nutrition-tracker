@@ -45,15 +45,17 @@ foodRoutes.get("/search", zValidator("query", FoodSearchSchema), async (c) => {
   let offResults: any[] = [];
   if (localResults.length < 5) {
     try {
+      console.log(`[OFF] Searching for "${query}", limit=${limit - localResults.length}`);
       const offFoods = await searchOFF(query, limit - localResults.length);
+      console.log(`[OFF] Got ${offFoods.length} results`);
       offResults = offFoods.map((f) => ({
         ...f,
         id: `off_${f.barcode}`, // Prefix so frontend knows it's from OFF
         source: "off",
         isVerified: true,
       }));
-    } catch {
-      // OFF unavailable — no problem
+    } catch (err) {
+      console.error("[OFF] Search failed:", err);
     }
   }
 

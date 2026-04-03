@@ -99,14 +99,20 @@ function normalizeProduct(p: OFFProduct): NormalizedFood | null {
 export async function searchOFF(query: string, limit = 20): Promise<NormalizedFood[]> {
   const url = `${OFF_BASE}/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=${limit}&fields=code,product_name,brands,serving_size,serving_quantity,nutriments,categories_tags,image_front_small_url`;
 
+  console.log(`[OFF] Fetching: ${url}`);
   const res = await fetch(url, {
     headers: { "User-Agent": "SmartNutritionTracker/1.0 (contact@snt.app)" },
+    signal: AbortSignal.timeout(8000),
   });
 
-  if (!res.ok) return [];
+  if (!res.ok) {
+    console.error(`[OFF] HTTP ${res.status}: ${res.statusText}`);
+    return [];
+  }
 
   const data = await res.json();
   const products: OFFProduct[] = data.products || [];
+  console.log(`[OFF] Raw products: ${products.length}, with names: ${products.filter(p => p.product_name).length}`);
 
   return products
     .map(normalizeProduct)
