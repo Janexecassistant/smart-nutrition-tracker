@@ -1,4 +1,5 @@
 import { Tabs } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function TabLayout() {
   return (
@@ -9,8 +10,9 @@ export default function TabLayout() {
         tabBarStyle: {
           borderTopColor: "#e2e8f0",
           backgroundColor: "#ffffff",
-          height: 56,
-          paddingBottom: 6,
+          height: 64,
+          paddingBottom: 8,
+          paddingTop: 4,
         },
         tabBarLabelStyle: {
           fontSize: 11,
@@ -34,25 +36,37 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Dashboard",
-          headerShown: false, // Dashboard has its own hero header
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="grid" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="suggestions"
         options={{
           title: "Suggestions",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="bulb" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="progress"
         options={{
           title: "Progress",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="trending-up" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: "Profile",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person-circle" size={size} color={color} />
+          ),
         }}
       />
     </Tabs>

@@ -53,9 +53,10 @@ export default function ProfileScreen() {
   const user = useAuth((s) => s.user);
   const [refreshing, setRefreshing] = useState(false);
 
-  const { data: profile, isLoading } = useQuery({
+  const { data: profile, isLoading, error } = useQuery({
     queryKey: ["profile"],
     queryFn: () => api.get<ProfileData>("/profile"),
+    retry: 2,
   });
 
   const onRefresh = useCallback(async () => {
@@ -98,6 +99,22 @@ export default function ProfileScreen() {
     );
   }
 
+  if (error) {
+    return (
+      <View style={s.loadingContainer}>
+        <Text style={{ fontSize: 16, color: "#ef4444", marginBottom: 12 }}>
+          Could not load profile
+        </Text>
+        <TouchableOpacity
+          style={[s.signOutBtn, { marginHorizontal: 40 }]}
+          onPress={() => queryClient.invalidateQueries({ queryKey: ["profile"] })}
+        >
+          <Text style={{ color: "#059669", fontWeight: "600" }}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <ScrollView
       style={s.container}
@@ -121,18 +138,18 @@ export default function ProfileScreen() {
       </View>
 
       {/* Daily Targets */}
-      {profile?.targets && (
+      {profile?.targets ? (
         <View style={s.card}>
           <Text style={s.section}>Daily Targets</Text>
           <Row
             label="Calories"
-            value={`${profile.targets.caloriesTarget.toLocaleString()} cal`}
+            value={`${(profile.targets.caloriesTarget ?? 0).toLocaleString()} cal`}
           />
-          <Row label="Protein" value={`${profile.targets.proteinG}g`} />
-          <Row label="Carbs" value={`${profile.targets.carbsG}g`} />
-          <Row label="Fat" value={`${profile.targets.fatG}g`} />
+          <Row label="Protein" value={`${profile.targets.proteinG ?? 0}g`} />
+          <Row label="Carbs" value={`${profile.targets.carbsG ?? 0}g`} />
+          <Row label="Fat" value={`${profile.targets.fatG ?? 0}g`} />
         </View>
-      )}
+      ) : null}
 
       {/* Body Stats */}
       <View style={s.card}>
