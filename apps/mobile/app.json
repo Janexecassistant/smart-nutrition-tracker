@@ -85,7 +85,10 @@
         {
           "cameraPermission": "Smart Nutrition Tracker uses the camera to scan food barcodes."
         }
-      ]
+      ],
+      "expo-font",
+      "expo-router",
+      "expo-web-browser"
     ],
     "_comment": "owner defaults to your Expo account",
     "extra": {
