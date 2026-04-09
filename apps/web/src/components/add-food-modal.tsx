@@ -96,11 +96,11 @@ export function AddFoodModal({ slot, isOpen, onClose, onAdded }: AddFoodModalPro
     if (!selected) return;
     setSaving(true); setError("");
     const mult = parseFloat(servings) || 1;
-    const isOffFood = selected.id.startsWith("off_");
+    const isExternalFood = selected.id.startsWith("off_") || selected.id.startsWith("usda_");
     try {
       await api.post("/logs", {
         mealSlot: slot,
-        ...(isOffFood ? {} : { foodId: selected.id }),
+        ...(isExternalFood ? {} : { foodId: selected.id }),
         foodType: "global",
         foodName: selected.name,
         quantityG: Number(selected.servingSizeG) * mult,
@@ -155,11 +155,11 @@ export function AddFoodModal({ slot, isOpen, onClose, onAdded }: AddFoodModalPro
     if (!scanResult) return;
     setSaving(true); setError("");
     const mult = parseFloat(servings) || 1;
-    const isOffFood = scanResult.id.startsWith("off_");
+    const isExternalFood = scanResult.id.startsWith("off_") || scanResult.id.startsWith("usda_");
     try {
       await api.post("/logs", {
         mealSlot: slot,
-        ...(isOffFood ? {} : { foodId: scanResult.id }),
+        ...(isExternalFood ? {} : { foodId: scanResult.id }),
         foodType: "global",
         foodName: scanResult.name,
         quantityG: Number(scanResult.servingSizeG) * mult,

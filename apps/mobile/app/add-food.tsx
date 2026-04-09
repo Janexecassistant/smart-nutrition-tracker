@@ -97,11 +97,11 @@ function SearchTab({ slot, router, queryClient }: any) {
 
   const logFood = async (food: FoodResult) => {
     const mult = parseFloat(servings) || 1;
-    const isOffFood = String(food.id).startsWith("off_");
+    const isExternalFood = String(food.id).startsWith("off_") || String(food.id).startsWith("usda_");
     try {
       await api.post("/logs", {
         mealSlot: slot,
-        ...(isOffFood ? {} : { foodId: food.id }),
+        ...(isExternalFood ? {} : { foodId: food.id }),
         foodType: "global",
         foodName: food.name,
         quantityG: Number(food.servingSizeG) * mult,
@@ -209,11 +209,11 @@ function ScanTab({ slot, router, queryClient }: any) {
 
   const logFood = async () => {
     if (!food) return;
-    const isOffFood = String(food.id).startsWith("off_");
+    const isExternalFood = String(food.id).startsWith("off_") || String(food.id).startsWith("usda_");
     try {
       await api.post("/logs", {
         mealSlot: slot,
-        ...(isOffFood ? {} : { foodId: food.id }),
+        ...(isExternalFood ? {} : { foodId: food.id }),
         foodType: "global",
         foodName: food.name,
         quantityG: Number(food.servingSizeG),

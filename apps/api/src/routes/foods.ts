@@ -5,12 +5,14 @@ import { db, foods, customFoods } from "@snt/db";
 import { FoodSearchSchema, CreateCustomFoodSchema } from "@snt/shared";
 import { requireAuth } from "../middleware/auth";
 import { searchFoods } from "../services/typesense";
-import { searchOFF, lookupBarcode } from "../services/open-food-facts";
+import { searchOFF, lookupBarcode as lookupBarcodeOFF } from "../services/open-food-facts";
+import { searchUSDA, lookupUSDABarcode } from "../services/usda";
 
 export const foodRoutes = new Hono();
 
 // ── Search Foods ─────────────────────────────────────────────────
-// Searches local DB first, then Open Food Facts for broader results.
+// Searches local DB first, then USDA + Open Food Facts in parallel
+// for comprehensive branded + international coverage.
 
 foodRoutes.get("/search", zValidator("query", FoodSearchSchema), async (c) => {
   const { query, limit, offset } = c.req.valid("query");
@@ -41,39 +43,69 @@ foodRoutes.get("/search", zValidator("query", FoodSearchSchema), async (c) => {
     }
   }
 
-  // 3. If local results are sparse, supplement with Open Food Facts
-  let offResults: any[] = [];
-  if (localResults.length < 5) {
-    try {
-      console.log(`[OFF] Searching for "${query}", limit=${limit - localResults.length}`);
-      const offFoods = await searchOFF(query, limit - localResults.length);
-      console.log(`[OFF] Got ${offFoods.length} results`);
-      offResults = offFoods.map((f) => ({
-        ...f,
-        id: `off_${f.barcode}`, // Prefix so frontend knows it's from OFF
-        source: "off",
-        isVerified: true,
-      }));
-    } catch (err) {
-      console.error("[OFF] Search failed:", err);
-    }
+  // 3. Always supplement with external sources (USDA + OFF in parallel)
+  //    USDA covers US name-brand products; OFF covers international items.
+  let externalResults: any[] = [];
+  const externalLimit = Math.max(limit - localResults.length, 15);
+
+  try {
+    const [usdaFoods, offFoods] = await Promise.allSettled([
+      searchUSDA(query, externalLimit),
+      searchOFF(query, Math.min(externalLimit, 10)),
+    ]);
+
+    const usdaResults =
+      usdaFoods.status === "fulfilled" ? usdaFoods.value : [];
+    const offResults =
+      offFoods.status === "fulfilled" ? offFoods.value : [];
+
+    console.log(
+      `[Search] "${query}" → local: ${localResults.length}, USDA: ${usdaResults.length}, OFF: ${offResults.length}`
+    );
+
+    // Normalize USDA results with usda_ prefix
+    const normalizedUSDA = usdaResults.map((f) => ({
+      ...f,
+      id: f.barcode ? `usda_${f.barcode}` : `usda_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      source: "usda",
+      isVerified: true,
+    }));
+
+    // Normalize OFF results with off_ prefix
+    const normalizedOFF = offResults.map((f) => ({
+      ...f,
+      id: `off_${f.barcode}`,
+      source: "off",
+      isVerified: true,
+    }));
+
+    externalResults = [...normalizedUSDA, ...normalizedOFF];
+  } catch (err) {
+    console.error("[Search] External search failed:", err);
   }
 
-  // Combine: local first, then OFF results (deduplicate by name roughly)
-  const localNames = new Set(localResults.map((r: any) => r.name?.toLowerCase()));
-  const dedupedOFF = offResults.filter(
-    (r) => !localNames.has(r.name?.toLowerCase())
+  // 4. Deduplicate: local first, then external (by name, case-insensitive)
+  const seenNames = new Set(
+    localResults.map((r: any) => r.name?.toLowerCase().trim())
   );
+  const dedupedExternal = externalResults.filter((r) => {
+    const key = r.name?.toLowerCase().trim();
+    if (seenNames.has(key)) return false;
+    seenNames.add(key); // Also dedupe across USDA and OFF
+    return true;
+  });
+
+  const combined = [...localResults, ...dedupedExternal].slice(0, limit);
 
   return c.json({
-    foods: [...localResults, ...dedupedOFF],
+    foods: combined,
     query,
-    total: localResults.length + dedupedOFF.length,
+    total: combined.length,
   });
 });
 
 // ── Barcode Lookup ───────────────────────────────────────────────
-// Checks local DB first, then Open Food Facts.
+// Checks local DB → USDA → Open Food Facts (in order).
 
 foodRoutes.get("/barcode/:code", async (c) => {
   const barcode = c.req.param("code");
@@ -87,21 +119,43 @@ foodRoutes.get("/barcode/:code", async (c) => {
     return c.json({ food: localResult, source: "local" });
   }
 
-  // 2. Look up on Open Food Facts
+  // 2. Try USDA and OFF in parallel for faster response
   try {
-    const offResult = await lookupBarcode(barcode);
-    if (offResult) {
+    const [usdaResult, offResult] = await Promise.allSettled([
+      lookupUSDABarcode(barcode),
+      lookupBarcodeOFF(barcode),
+    ]);
+
+    const usda =
+      usdaResult.status === "fulfilled" ? usdaResult.value : null;
+    const off =
+      offResult.status === "fulfilled" ? offResult.value : null;
+
+    // Prefer USDA (more accurate nutrition data for US products)
+    if (usda) {
       return c.json({
         food: {
-          id: `off_${offResult.barcode}`,
-          ...offResult,
+          id: `usda_${usda.barcode || barcode}`,
+          ...usda,
+          barcode,
+          isVerified: true,
+        },
+        source: "usda",
+      });
+    }
+
+    if (off) {
+      return c.json({
+        food: {
+          id: `off_${off.barcode}`,
+          ...off,
           isVerified: true,
         },
         source: "off",
       });
     }
   } catch {
-    // OFF unavailable
+    // Both sources unavailable
   }
 
   return c.json({ error: "Food not found for this barcode" }, 404);
