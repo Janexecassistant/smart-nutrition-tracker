@@ -38,5 +38,14 @@
       },
       "channel": "production"
     }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleId": "mybuddyjonathan@gmail.com",
+        "ascAppId": "6761935658",
+        "appleTeamId": "6527UPCWZF"
+      }
+    }
   }
 }
