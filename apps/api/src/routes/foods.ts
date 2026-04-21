@@ -80,10 +80,13 @@ foodRoutes.get("/search", zValidator("query", FoodSearchSchema), async (c) => {
       if (terms.length > 0) {
         // e.g. "onion sliced" → "onion:* | sliced:*"
         const tsqueryStr = terms.map((t) => `${t}:*`).join(" | ");
-        // Substring pattern for tie-break / "exact phrase" boost.
-        const fullPattern = `%${query.toLowerCase()}%`;
+        // Substring pattern for "contains full phrase" boost.
+        const fullPhrasePattern = `%${query.toLowerCase()}%`;
+        // Prefix pattern for "name starts with first term" boost — this is
+        // what pulls "Onions, raw" above "Snacks, ... onion-flavor".
         const firstTerm = terms[0];
-        const firstTermPattern = `%${firstTerm}%`;
+        const firstTermStartPattern = `${firstTerm}%`;
+        const firstTermSubstrPattern = `%${firstTerm}%`;
 
         const rows = await db.execute(sql`
           SELECT
@@ -112,16 +115,19 @@ foodRoutes.get("/search", zValidator("query", FoodSearchSchema), async (c) => {
                to_tsquery('english', ${tsqueryStr}) q(tsq)
           WHERE f.search_vector @@ q.tsq
           ORDER BY
-            -- 1. Exact full-phrase matches in name win outright
-            (LOWER(f.name) LIKE ${fullPattern}) DESC,
-            -- 2. First-term matches in name (e.g. "onion..." when searching "onion sliced")
-            (LOWER(f.name) LIKE ${firstTermPattern}) DESC,
-            -- 3. Whole-foods (Foundation/SR Legacy with no brand) ranked above branded
+            -- 1. Exact full-phrase match in name wins outright
+            (LOWER(f.name) LIKE ${fullPhrasePattern}) DESC,
+            -- 2. Name STARTS with first term (kills "Snacks, ... onion-flavor"
+            --    results when user searches "onion"). This is the key boost.
+            (LOWER(f.name) LIKE ${firstTermStartPattern}) DESC,
+            -- 3. Name contains first term anywhere
+            (LOWER(f.name) LIKE ${firstTermSubstrPattern}) DESC,
+            -- 4. Whole-foods (Foundation/SR Legacy with no brand) above branded
             (f.brand IS NULL) DESC,
             ('whole_food' = ANY(f.tags)) DESC,
-            -- 4. Full-text relevance
+            -- 5. Full-text relevance
             ts_rank_cd(f.search_vector, q.tsq) DESC,
-            -- 5. Shorter names win (less descriptive = more generic)
+            -- 6. Shorter names win (less descriptive = more generic)
             LENGTH(f.name) ASC
           LIMIT ${limit}
           OFFSET ${offset};
