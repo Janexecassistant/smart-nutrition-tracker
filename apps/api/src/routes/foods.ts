@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { eq, ilike, or, sql } from "drizzle-orm";
-import { db, foods, customFoods } from "@snt/db";
+import { eq, ilike, inArray, or, sql } from "drizzle-orm";
+import { db, foods, foodPortions, customFoods } from "@snt/db";
 import { FoodSearchSchema, CreateCustomFoodSchema } from "@snt/shared";
 import { requireAuth } from "../middleware/auth";
 import { searchFoods } from "../services/typesense";
@@ -9,6 +9,41 @@ import { searchOFF, lookupBarcode as lookupBarcodeOFF } from "../services/open-f
 import { searchUSDA, lookupUSDABarcode } from "../services/usda";
 
 export const foodRoutes = new Hono();
+
+// ── Helper: fetch portions for a batch of food IDs ───────────────
+
+async function getPortionsByFoodId(
+  foodIds: string[]
+): Promise<Map<string, any[]>> {
+  const byFood = new Map<string, any[]>();
+  if (foodIds.length === 0) return byFood;
+
+  try {
+    const rows = await db
+      .select()
+      .from(foodPortions)
+      .where(inArray(foodPortions.foodId, foodIds))
+      .orderBy(foodPortions.sequenceNumber);
+
+    for (const r of rows) {
+      const list = byFood.get(r.foodId) ?? [];
+      list.push({
+        id: r.id,
+        amount: r.amount,
+        unit: r.unit,
+        modifier: r.modifier,
+        description: r.description,
+        gramWeight: r.gramWeight,
+        sequenceNumber: r.sequenceNumber,
+      });
+      byFood.set(r.foodId, list);
+    }
+  } catch (err) {
+    console.error("[Portions] Failed to fetch portions:", err);
+  }
+
+  return byFood;
+}
 
 // ── Search Foods ─────────────────────────────────────────────────
 // Searches local DB first, then USDA + Open Food Facts in parallel
@@ -97,10 +132,28 @@ foodRoutes.get("/search", zValidator("query", FoodSearchSchema), async (c) => {
 
   const combined = [...localResults, ...dedupedExternal].slice(0, limit);
 
+  // Attach food-specific portions (alt units like "1 cup sliced") to local
+  // results. External (USDA live / OFF) results fall back to serving/g/oz
+  // only — we don't have portion detail until they're persisted.
+  const localIds = combined
+    .map((f: any) => f.id)
+    .filter(
+      (id: string) =>
+        typeof id === "string" &&
+        !id.startsWith("usda_") &&
+        !id.startsWith("off_")
+    );
+  const portionsByFood = await getPortionsByFoodId(localIds);
+
+  const enriched = combined.map((f: any) => ({
+    ...f,
+    portions: portionsByFood.get(f.id) ?? [],
+  }));
+
   return c.json({
-    foods: combined,
+    foods: enriched,
     query,
-    total: combined.length,
+    total: enriched.length,
   });
 });
 
@@ -116,7 +169,14 @@ foodRoutes.get("/barcode/:code", async (c) => {
   });
 
   if (localResult) {
-    return c.json({ food: localResult, source: "local" });
+    const portionsByFood = await getPortionsByFoodId([localResult.id]);
+    return c.json({
+      food: {
+        ...localResult,
+        portions: portionsByFood.get(localResult.id) ?? [],
+      },
+      source: "local",
+    });
   }
 
   // 2. Try USDA and OFF in parallel for faster response
@@ -174,7 +234,14 @@ foodRoutes.get("/:id", async (c) => {
     return c.json({ error: "Food not found" }, 404);
   }
 
-  return c.json({ food: result });
+  const portionsByFood = await getPortionsByFoodId([id]);
+
+  return c.json({
+    food: {
+      ...result,
+      portions: portionsByFood.get(id) ?? [],
+    },
+  });
 });
 
 // ── Custom Foods (authenticated) ──────────────────────────────────

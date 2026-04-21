@@ -4,12 +4,12 @@
  * Data source: https://fdc.nal.usda.gov/
  * API docs:    https://fdc.nal.usda.gov/api-guide.html
  *
- * We pull from the "Foundation" and "SR Legacy" datasets, which contain
- * generic whole foods (chicken breast, rice, broccoli, etc.) with high-quality
- * nutrient data reviewed by USDA scientists.
+ * We pull three datasets:
+ *   - Foundation       (~200)    High-quality lab-analyzed whole foods
+ *   - SR Legacy        (~7,800)  USDA Standard Reference — comprehensive generics
+ *   - Branded          (limited) Name-brand items (Chobani, Kind, Kirkland, etc.)
  *
- * Branded foods come from Open Food Facts instead — better coverage,
- * barcode data, and no API key needed.
+ * Branded is capped via BRANDED_MAX_FOODS below to keep the DB lean.
  */
 
 // Nutrient IDs we care about from the USDA API
@@ -52,11 +52,17 @@ export const CORE_NUTRIENT_IDS = {
   sodium: 1093,
 };
 
-// USDA data types we import
+// USDA data types we import. Order matters — Foundation/SR first gives
+// generic whole foods a natural rank boost before branded items.
 export const USDA_DATA_TYPES = [
   "Foundation",    // High-quality lab-analyzed foods
   "SR Legacy",     // USDA Standard Reference (legacy but comprehensive)
-];
+  "Branded",       // Name-brand products
+] as const;
+
+// Cap on Branded imports. USDA has ~400k branded items; 50k gives us
+// strong coverage of US retail products without bloating search.
+export const BRANDED_MAX_FOODS = Number(process.env.BRANDED_MAX_FOODS) || 50_000;
 
 // Food categories mapped to our simplified category system
 export const CATEGORY_MAP: Record<string, string> = {
@@ -90,3 +96,7 @@ export const CATEGORY_MAP: Record<string, string> = {
 export const API_RATE_LIMIT_MS = 200; // 5 requests/sec max
 export const API_PAGE_SIZE = 200;
 export const API_BASE_URL = "https://api.nal.usda.gov/fdc/v1";
+
+// DB insert batch size. Keep under 1000 to stay within Postgres param limits
+// given ~20 columns per row (~20 * 500 = 10k params, well under the 65k limit).
+export const DB_BATCH_SIZE = 500;

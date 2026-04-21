@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   View,
   Text,
@@ -10,11 +10,21 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Modal,
+  FlatList,
 } from "react-native";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "../src/lib/api";
+import {
+  buildUnitOptions,
+  scaleNutrition,
+  toGrams,
+  formatServingLabel,
+  type FoodPortion,
+  type UnitOption,
+} from "@snt/shared";
 
 type Tab = "search" | "scan" | "quick";
 
@@ -28,8 +38,12 @@ interface FoodResult {
   proteinG: string | number;
   carbsG: string | number;
   fatG: string | number;
+  fiberG?: string | number | null;
+  sugarG?: string | number | null;
+  sodiumMg?: string | number | null;
   imageUrl?: string | null;
   source?: string;
+  portions?: FoodPortion[];
 }
 
 export default function AddFoodScreen() {
@@ -79,7 +93,9 @@ function SearchTab({ slot, router, queryClient }: any) {
   const [results, setResults] = useState<FoodResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<FoodResult | null>(null);
-  const [servings, setServings] = useState("1");
+  const [amount, setAmount] = useState("1");
+  const [unitIdx, setUnitIdx] = useState(0);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const debounce = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
@@ -95,8 +111,23 @@ function SearchTab({ slot, router, queryClient }: any) {
     }, 400);
   }, [query]);
 
+  const unitOptions: UnitOption[] = useMemo(
+    () => (selected ? buildUnitOptions(selected) : []),
+    [selected]
+  );
+  const option = unitOptions[unitIdx] ?? unitOptions[0];
+  const amt = parseFloat(amount);
+  const grams = option ? toGrams(Number.isFinite(amt) ? amt : 0, option) : 0;
+  const scaled = selected
+    ? scaleNutrition(selected, grams)
+    : { calories: 0, proteinG: 0, carbsG: 0, fatG: 0, fiberG: null, sugarG: null, sodiumMg: null };
+
   const logFood = async (food: FoodResult) => {
-    const mult = parseFloat(servings) || 1;
+    if (!option || grams <= 0) {
+      Alert.alert("Error", "Enter an amount greater than 0.");
+      return;
+    }
+    const label = formatServingLabel(Number.isFinite(amt) ? amt : 1, option);
     const isExternalFood = String(food.id).startsWith("off_") || String(food.id).startsWith("usda_");
     try {
       await api.post("/logs", {
@@ -104,12 +135,12 @@ function SearchTab({ slot, router, queryClient }: any) {
         ...(isExternalFood ? {} : { foodId: food.id }),
         foodType: "global",
         foodName: food.name,
-        quantityG: Number(food.servingSizeG) * mult,
-        servingLabel: food.servingLabel || `${Math.round(Number(food.servingSizeG) * mult)}g`,
-        calories: Math.round(Number(food.calories) * mult),
-        proteinG: Math.round(Number(food.proteinG) * mult * 10) / 10,
-        carbsG: Math.round(Number(food.carbsG) * mult * 10) / 10,
-        fatG: Math.round(Number(food.fatG) * mult * 10) / 10,
+        quantityG: grams,
+        servingLabel: label,
+        calories: scaled.calories,
+        proteinG: scaled.proteinG,
+        carbsG: scaled.carbsG,
+        fatG: scaled.fatG,
       });
       queryClient.invalidateQueries({ queryKey: ["logs", "today"] });
       router.back();
@@ -119,32 +150,61 @@ function SearchTab({ slot, router, queryClient }: any) {
   };
 
   if (selected) {
-    const mult = parseFloat(servings) || 1;
     return (
       <ScrollView style={styles.detail}>
         <Text style={styles.detailName}>{selected.name}</Text>
         {selected.brand && <Text style={styles.detailBrand}>{selected.brand}</Text>}
-        <View style={styles.servingRow}>
-          <Text style={styles.servingLabel}>Servings:</Text>
-          <TextInput
-            style={styles.servingInput}
-            keyboardType="decimal-pad"
-            value={servings}
-            onChangeText={setServings}
-          />
+        <Text style={styles.detailPerServing}>
+          Per serving ({Number(selected.servingSizeG)}g): {Number(selected.calories)} cal
+        </Text>
+
+        {/* Amount + Unit picker */}
+        <View style={styles.unitRow}>
+          <View style={styles.unitCol}>
+            <Text style={styles.unitLabel}>Amount</Text>
+            <TextInput
+              style={styles.amountInput}
+              keyboardType="decimal-pad"
+              value={amount}
+              onChangeText={setAmount}
+            />
+          </View>
+          <View style={[styles.unitCol, { flex: 2 }]}>
+            <Text style={styles.unitLabel}>Unit</Text>
+            <TouchableOpacity
+              style={styles.unitButton}
+              onPress={() => setPickerOpen(true)}
+            >
+              <Text style={styles.unitButtonText} numberOfLines={1}>
+                {option?.label ?? "—"}
+              </Text>
+              <Text style={styles.unitButtonChevron}>▾</Text>
+            </TouchableOpacity>
+          </View>
         </View>
+        <Text style={styles.gramsHint}>≈ {grams} g total</Text>
+
         <View style={styles.macroPills}>
-          <MacroPill label="Cal" value={Math.round(Number(selected.calories) * mult)} color="#0f172a" />
-          <MacroPill label="P" value={Math.round(Number(selected.proteinG) * mult)} color="#3b82f6" unit="g" />
-          <MacroPill label="C" value={Math.round(Number(selected.carbsG) * mult)} color="#f59e0b" unit="g" />
-          <MacroPill label="F" value={Math.round(Number(selected.fatG) * mult)} color="#ef4444" unit="g" />
+          <MacroPill label="Cal" value={scaled.calories} color="#0f172a" />
+          <MacroPill label="P" value={scaled.proteinG} color="#3b82f6" unit="g" />
+          <MacroPill label="C" value={scaled.carbsG} color="#f59e0b" unit="g" />
+          <MacroPill label="F" value={scaled.fatG} color="#ef4444" unit="g" />
         </View>
+
         <TouchableOpacity style={styles.logButton} onPress={() => logFood(selected)}>
           <Text style={styles.logButtonText}>Log Food</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.backLink} onPress={() => setSelected(null)}>
           <Text style={styles.backLinkText}>← Back to results</Text>
         </TouchableOpacity>
+
+        <UnitPickerModal
+          visible={pickerOpen}
+          options={unitOptions}
+          selectedIdx={unitIdx}
+          onSelect={(i) => { setUnitIdx(i); setPickerOpen(false); }}
+          onClose={() => setPickerOpen(false)}
+        />
       </ScrollView>
     );
   }
@@ -162,7 +222,7 @@ function SearchTab({ slot, router, queryClient }: any) {
       {loading && <ActivityIndicator style={{ marginTop: 16 }} color="#059669" />}
       <ScrollView>
         {results.map((food) => (
-          <TouchableOpacity key={food.id} style={styles.resultItem} onPress={() => { setSelected(food); setServings("1"); }}>
+          <TouchableOpacity key={food.id} style={styles.resultItem} onPress={() => { setSelected(food); setAmount("1"); setUnitIdx(0); }}>
             <View style={{ flex: 1 }}>
               <Text style={styles.resultName}>{food.name}</Text>
               {food.brand && <Text style={styles.resultBrand}>{food.brand}</Text>}
@@ -185,6 +245,9 @@ function ScanTab({ slot, router, queryClient }: any) {
   const [food, setFood] = useState<FoodResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [manualCode, setManualCode] = useState("");
+  const [amount, setAmount] = useState("1");
+  const [unitIdx, setUnitIdx] = useState(0);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const handleBarcode = async (code: string) => {
     if (scanned || !code) return;
@@ -194,6 +257,8 @@ function ScanTab({ slot, router, queryClient }: any) {
       const data = await api.get<{ food: FoodResult; source: string }>(`/foods/barcode/${code}`);
       if (data.food) {
         setFood(data.food);
+        setAmount("1");
+        setUnitIdx(0);
       } else {
         Alert.alert("Not Found", `No food found for barcode ${code}. Try searching instead.`, [
           { text: "OK", onPress: () => setScanned(false) },
@@ -207,8 +272,23 @@ function ScanTab({ slot, router, queryClient }: any) {
     setLoading(false);
   };
 
+  const unitOptions: UnitOption[] = useMemo(
+    () => (food ? buildUnitOptions(food) : []),
+    [food]
+  );
+  const option = unitOptions[unitIdx] ?? unitOptions[0];
+  const amt = parseFloat(amount);
+  const grams = option ? toGrams(Number.isFinite(amt) ? amt : 0, option) : 0;
+  const scaled = food
+    ? scaleNutrition(food, grams)
+    : { calories: 0, proteinG: 0, carbsG: 0, fatG: 0, fiberG: null, sugarG: null, sodiumMg: null };
+
   const logFood = async () => {
-    if (!food) return;
+    if (!food || !option || grams <= 0) {
+      Alert.alert("Error", "Enter an amount greater than 0.");
+      return;
+    }
+    const label = formatServingLabel(Number.isFinite(amt) ? amt : 1, option);
     const isExternalFood = String(food.id).startsWith("off_") || String(food.id).startsWith("usda_");
     try {
       await api.post("/logs", {
@@ -216,12 +296,12 @@ function ScanTab({ slot, router, queryClient }: any) {
         ...(isExternalFood ? {} : { foodId: food.id }),
         foodType: "global",
         foodName: food.name,
-        quantityG: Number(food.servingSizeG),
-        servingLabel: food.servingLabel || `${food.servingSizeG}g`,
-        calories: Math.round(Number(food.calories)),
-        proteinG: Math.round(Number(food.proteinG) * 10) / 10,
-        carbsG: Math.round(Number(food.carbsG) * 10) / 10,
-        fatG: Math.round(Number(food.fatG) * 10) / 10,
+        quantityG: grams,
+        servingLabel: label,
+        calories: scaled.calories,
+        proteinG: scaled.proteinG,
+        carbsG: scaled.carbsG,
+        fatG: scaled.fatG,
       });
       queryClient.invalidateQueries({ queryKey: ["logs", "today"] });
       router.back();
@@ -246,11 +326,40 @@ function ScanTab({ slot, router, queryClient }: any) {
       <ScrollView style={styles.detail}>
         <Text style={styles.detailName}>{food.name}</Text>
         {food.brand && <Text style={styles.detailBrand}>{food.brand}</Text>}
+        <Text style={styles.detailPerServing}>
+          Per serving ({Number(food.servingSizeG)}g): {Number(food.calories)} cal
+        </Text>
+
+        <View style={styles.unitRow}>
+          <View style={styles.unitCol}>
+            <Text style={styles.unitLabel}>Amount</Text>
+            <TextInput
+              style={styles.amountInput}
+              keyboardType="decimal-pad"
+              value={amount}
+              onChangeText={setAmount}
+            />
+          </View>
+          <View style={[styles.unitCol, { flex: 2 }]}>
+            <Text style={styles.unitLabel}>Unit</Text>
+            <TouchableOpacity
+              style={styles.unitButton}
+              onPress={() => setPickerOpen(true)}
+            >
+              <Text style={styles.unitButtonText} numberOfLines={1}>
+                {option?.label ?? "—"}
+              </Text>
+              <Text style={styles.unitButtonChevron}>▾</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+        <Text style={styles.gramsHint}>≈ {grams} g total</Text>
+
         <View style={styles.macroPills}>
-          <MacroPill label="Cal" value={Math.round(Number(food.calories))} color="#0f172a" />
-          <MacroPill label="P" value={Math.round(Number(food.proteinG))} color="#3b82f6" unit="g" />
-          <MacroPill label="C" value={Math.round(Number(food.carbsG))} color="#f59e0b" unit="g" />
-          <MacroPill label="F" value={Math.round(Number(food.fatG))} color="#ef4444" unit="g" />
+          <MacroPill label="Cal" value={scaled.calories} color="#0f172a" />
+          <MacroPill label="P" value={scaled.proteinG} color="#3b82f6" unit="g" />
+          <MacroPill label="C" value={scaled.carbsG} color="#f59e0b" unit="g" />
+          <MacroPill label="F" value={scaled.fatG} color="#ef4444" unit="g" />
         </View>
         <TouchableOpacity style={styles.logButton} onPress={logFood}>
           <Text style={styles.logButtonText}>Log Scanned Food</Text>
@@ -258,6 +367,14 @@ function ScanTab({ slot, router, queryClient }: any) {
         <TouchableOpacity style={styles.backLink} onPress={() => { setFood(null); setScanned(false); }}>
           <Text style={styles.backLinkText}>← Scan another</Text>
         </TouchableOpacity>
+
+        <UnitPickerModal
+          visible={pickerOpen}
+          options={unitOptions}
+          selectedIdx={unitIdx}
+          onSelect={(i) => { setUnitIdx(i); setPickerOpen(false); }}
+          onClose={() => setPickerOpen(false)}
+        />
       </ScrollView>
     );
   }
@@ -362,6 +479,79 @@ function MacroPill({ label, value, color, unit }: { label: string; value: number
   );
 }
 
+function UnitPickerModal({
+  visible,
+  options,
+  selectedIdx,
+  onSelect,
+  onClose,
+}: {
+  visible: boolean;
+  options: UnitOption[];
+  selectedIdx: number;
+  onSelect: (idx: number) => void;
+  onClose: () => void;
+}) {
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <TouchableOpacity
+        style={styles.modalBackdrop}
+        activeOpacity={1}
+        onPress={onClose}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          style={styles.modalSheet}
+          onPress={() => {}}
+        >
+          <View style={styles.modalHandleRow}>
+            <View style={styles.modalHandle} />
+          </View>
+          <Text style={styles.modalTitle}>Choose unit</Text>
+          <FlatList
+            data={options}
+            keyExtractor={(item, idx) =>
+              item.kind === "portion" ? `p_${item.portionId}` : `u_${item.key}_${idx}`
+            }
+            renderItem={({ item, index }) => {
+              const isSelected = index === selectedIdx;
+              return (
+                <TouchableOpacity
+                  style={[
+                    styles.unitPickerRow,
+                    isSelected && styles.unitPickerRowActive,
+                  ]}
+                  onPress={() => onSelect(index)}
+                >
+                  <Text
+                    style={[
+                      styles.unitPickerLabel,
+                      isSelected && styles.unitPickerLabelActive,
+                    ]}
+                  >
+                    {item.label}
+                  </Text>
+                  {isSelected && <Text style={styles.unitPickerCheck}>✓</Text>}
+                </TouchableOpacity>
+              );
+            }}
+            ItemSeparatorComponent={() => <View style={styles.unitPickerSep} />}
+            style={{ maxHeight: 400 }}
+          />
+          <TouchableOpacity style={styles.modalCloseBtn} onPress={onClose}>
+            <Text style={styles.modalCloseText}>Close</Text>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f8faf9" },
   tabs: { flexDirection: "row", paddingHorizontal: 16, paddingTop: 8, gap: 8 },
@@ -404,4 +594,51 @@ const styles = StyleSheet.create({
   manualRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingBottom: 16 },
   quickForm: { padding: 16 },
   quickLabel: { fontSize: 14, fontWeight: "600", color: "#404040", marginTop: 12, marginLeft: 16 },
+
+  // Detail view per-serving line
+  detailPerServing: { fontSize: 13, color: "#64748b", marginTop: 6 },
+
+  // Amount + unit row
+  unitRow: { flexDirection: "row", gap: 10, marginTop: 20 },
+  unitCol: { flex: 1 },
+  unitLabel: { fontSize: 12, fontWeight: "600", color: "#64748b", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.4 },
+  amountInput: {
+    backgroundColor: "#fff", borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: "#0f172a", textAlign: "center",
+  },
+  unitButton: {
+    backgroundColor: "#fff", borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+  },
+  unitButtonText: { fontSize: 15, color: "#0f172a", flex: 1, marginRight: 8 },
+  unitButtonChevron: { fontSize: 14, color: "#94a3b8" },
+  gramsHint: { fontSize: 13, color: "#059669", marginTop: 10, fontWeight: "500" },
+
+  // Unit picker modal
+  modalBackdrop: { flex: 1, backgroundColor: "rgba(15,23,42,0.4)", justifyContent: "flex-end" },
+  modalSheet: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 30,
+    maxHeight: "75%",
+  },
+  modalHandleRow: { alignItems: "center", paddingVertical: 8 },
+  modalHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: "#cbd5e1" },
+  modalTitle: { fontSize: 18, fontWeight: "700", color: "#0f172a", marginBottom: 12, marginTop: 4 },
+  unitPickerRow: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingVertical: 14, paddingHorizontal: 4,
+  },
+  unitPickerRowActive: {},
+  unitPickerLabel: { fontSize: 16, color: "#0f172a", flex: 1 },
+  unitPickerLabelActive: { fontWeight: "700", color: "#059669" },
+  unitPickerCheck: { fontSize: 18, color: "#059669", fontWeight: "700", marginLeft: 12 },
+  unitPickerSep: { height: 0.5, backgroundColor: "#f1f5f9" },
+  modalCloseBtn: {
+    marginTop: 12, paddingVertical: 14, borderRadius: 12, backgroundColor: "#f1f5f9", alignItems: "center",
+  },
+  modalCloseText: { fontSize: 16, fontWeight: "600", color: "#475569" },
 });

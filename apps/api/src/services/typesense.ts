@@ -13,12 +13,21 @@
 
 import Typesense from "typesense";
 
+// Protocol defaults: https when TYPESENSE_HOST is set (production), http for
+// local dev. Override with TYPESENSE_PROTOCOL=http|https if needed.
+const tsHost = process.env.TYPESENSE_HOST;
+const tsProtocol =
+  process.env.TYPESENSE_PROTOCOL || (tsHost ? "https" : "http");
+const tsPort =
+  Number(process.env.TYPESENSE_PORT) ||
+  (tsProtocol === "https" ? 443 : 8108);
+
 const client = new Typesense.Client({
   nodes: [
     {
-      host: process.env.TYPESENSE_HOST || "localhost",
-      port: Number(process.env.TYPESENSE_PORT) || 8108,
-      protocol: "http",
+      host: tsHost || "localhost",
+      port: tsPort,
+      protocol: tsProtocol,
     },
   ],
   apiKey: process.env.TYPESENSE_API_KEY || "snt-dev-key",

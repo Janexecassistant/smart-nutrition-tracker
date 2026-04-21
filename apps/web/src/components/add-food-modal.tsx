@@ -1,8 +1,16 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { api } from "@/lib/api";
 import { BarcodeScanner } from "./barcode-scanner";
+import {
+  buildUnitOptions,
+  scaleNutrition,
+  toGrams,
+  formatServingLabel,
+  type FoodPortion,
+  type UnitOption,
+} from "@snt/shared";
 import type { MealSlot } from "@snt/shared";
 
 interface AddFoodModalProps {
@@ -22,9 +30,13 @@ interface FoodResult {
   proteinG: string | number;
   carbsG: string | number;
   fatG: string | number;
+  fiberG?: string | number | null;
+  sugarG?: string | number | null;
+  sodiumMg?: string | number | null;
   servingSizeG: string | number;
   servingLabel?: string | null;
   imageUrl?: string | null;
+  portions?: FoodPortion[];
 }
 
 const SLOT_COLORS: Record<string, { gradient: string; accent: string; bg: string }> = {
@@ -40,7 +52,9 @@ export function AddFoodModal({ slot, isOpen, onClose, onAdded }: AddFoodModalPro
   const [results, setResults] = useState<FoodResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [selected, setSelected] = useState<FoodResult | null>(null);
-  const [servings, setServings] = useState("1");
+  // Portion logging: user picks an amount + a unit option.
+  const [amount, setAmount] = useState("1");
+  const [unitIdx, setUnitIdx] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
@@ -65,7 +79,8 @@ export function AddFoodModal({ slot, isOpen, onClose, onAdded }: AddFoodModalPro
       setTimeout(() => searchRef.current?.focus(), 100);
     }
     if (!isOpen) {
-      setQuery(""); setResults([]); setSelected(null); setServings("1");
+      setQuery(""); setResults([]); setSelected(null);
+      setAmount("1"); setUnitIdx(0);
       setError(""); setTab("search");
       setQuickName(""); setQuickCal(""); setQuickProtein(""); setQuickCarbs(""); setQuickFat("");
       setScanResult(null); setScanLoading(false); setScanError("");
@@ -95,7 +110,15 @@ export function AddFoodModal({ slot, isOpen, onClose, onAdded }: AddFoodModalPro
   async function logFood() {
     if (!selected) return;
     setSaving(true); setError("");
-    const mult = parseFloat(servings) || 1;
+    const opts = buildUnitOptions(selected);
+    const option = opts[unitIdx] ?? opts[0];
+    const amt = parseFloat(amount) || 0;
+    const grams = toGrams(amt, option);
+    if (grams <= 0) {
+      setSaving(false); setError("Enter an amount greater than 0"); return;
+    }
+    const scaled = scaleNutrition(selected, grams);
+    const label = formatServingLabel(amt, option);
     const isExternalFood = selected.id.startsWith("off_") || selected.id.startsWith("usda_");
     try {
       await api.post("/logs", {
@@ -103,12 +126,12 @@ export function AddFoodModal({ slot, isOpen, onClose, onAdded }: AddFoodModalPro
         ...(isExternalFood ? {} : { foodId: selected.id }),
         foodType: "global",
         foodName: selected.name,
-        quantityG: Number(selected.servingSizeG) * mult,
-        servingLabel: selected.servingLabel || `${Math.round(Number(selected.servingSizeG) * mult)}g`,
-        calories: Math.round(Number(selected.calories) * mult),
-        proteinG: Math.round(Number(selected.proteinG) * mult * 10) / 10,
-        carbsG: Math.round(Number(selected.carbsG) * mult * 10) / 10,
-        fatG: Math.round(Number(selected.fatG) * mult * 10) / 10,
+        quantityG: grams,
+        servingLabel: label,
+        calories: scaled.calories,
+        proteinG: scaled.proteinG,
+        carbsG: scaled.carbsG,
+        fatG: scaled.fatG,
       });
       onAdded(); onClose();
     } catch (err: any) {
@@ -136,6 +159,7 @@ export function AddFoodModal({ slot, isOpen, onClose, onAdded }: AddFoodModalPro
 
   const handleBarcodeDetected = useCallback(async (barcode: string) => {
     setScanResult(null); setScanError(""); setScanLoading(true);
+    setAmount("1"); setUnitIdx(0);
     try {
       const data = await api.get(`/foods/barcode/${barcode}`);
       if (data.food) {
@@ -154,7 +178,15 @@ export function AddFoodModal({ slot, isOpen, onClose, onAdded }: AddFoodModalPro
   async function logScannedFood() {
     if (!scanResult) return;
     setSaving(true); setError("");
-    const mult = parseFloat(servings) || 1;
+    const opts = buildUnitOptions(scanResult);
+    const option = opts[unitIdx] ?? opts[0];
+    const amt = parseFloat(amount) || 0;
+    const grams = toGrams(amt, option);
+    if (grams <= 0) {
+      setSaving(false); setError("Enter an amount greater than 0"); return;
+    }
+    const scaled = scaleNutrition(scanResult, grams);
+    const label = formatServingLabel(amt, option);
     const isExternalFood = scanResult.id.startsWith("off_") || scanResult.id.startsWith("usda_");
     try {
       await api.post("/logs", {
@@ -162,12 +194,12 @@ export function AddFoodModal({ slot, isOpen, onClose, onAdded }: AddFoodModalPro
         ...(isExternalFood ? {} : { foodId: scanResult.id }),
         foodType: "global",
         foodName: scanResult.name,
-        quantityG: Number(scanResult.servingSizeG) * mult,
-        servingLabel: scanResult.servingLabel || `${Math.round(Number(scanResult.servingSizeG) * mult)}g`,
-        calories: Math.round(Number(scanResult.calories) * mult),
-        proteinG: Math.round(Number(scanResult.proteinG) * mult * 10) / 10,
-        carbsG: Math.round(Number(scanResult.carbsG) * mult * 10) / 10,
-        fatG: Math.round(Number(scanResult.fatG) * mult * 10) / 10,
+        quantityG: grams,
+        servingLabel: label,
+        calories: scaled.calories,
+        proteinG: scaled.proteinG,
+        carbsG: scaled.carbsG,
+        fatG: scaled.fatG,
       });
       onAdded(); onClose();
     } catch (err: any) {
@@ -179,14 +211,21 @@ export function AddFoodModal({ slot, isOpen, onClose, onAdded }: AddFoodModalPro
 
   const slotLabel = slot.charAt(0).toUpperCase() + slot.slice(1);
 
-  // Shared component for food detail + servings + macros
+  // Shared component for food detail + amount/unit picker + macros
   function FoodDetailView({ food }: { food: FoodResult }) {
-    const mult = parseFloat(servings) || 1;
+    const unitOptions: UnitOption[] = useMemo(
+      () => buildUnitOptions(food),
+      [food]
+    );
+    const option = unitOptions[unitIdx] ?? unitOptions[0];
+    const amt = parseFloat(amount);
+    const grams = option ? toGrams(Number.isFinite(amt) ? amt : 0, option) : 0;
+    const scaled = scaleNutrition(food, grams);
+
     return (
       <div className="space-y-3">
         <div className="rounded-xl p-3 border" style={{ backgroundColor: colors.bg, borderColor: `${colors.accent}30` }}>
           <div className="flex items-start gap-3">
-            {/* Product image */}
             {food.imageUrl && (
               <img
                 src={food.imageUrl}
@@ -217,24 +256,46 @@ export function AddFoodModal({ slot, isOpen, onClose, onAdded }: AddFoodModalPro
           </div>
         </div>
 
-        <div>
-          <label className="text-xs text-neutral-500 block mb-1">Number of servings</label>
-          <input
-            type="number" value={servings}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setServings(e.target.value)}
-            min="0.25" step="0.25"
-            className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:ring-2 focus:border-transparent transition-all"
-            style={{ "--tw-ring-color": `${colors.accent}40` } as any}
-          />
+        {/* Amount + Unit picker */}
+        <div className="grid grid-cols-5 gap-2">
+          <div className="col-span-2">
+            <label className="text-xs text-neutral-500 block mb-1">Amount</label>
+            <input
+              type="number"
+              value={amount}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(e.target.value)}
+              min="0" step="0.25" inputMode="decimal"
+              className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:ring-2 focus:border-transparent transition-all"
+              style={{ "--tw-ring-color": `${colors.accent}40` } as any}
+            />
+          </div>
+          <div className="col-span-3">
+            <label className="text-xs text-neutral-500 block mb-1">Unit</label>
+            <select
+              value={unitIdx}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setUnitIdx(Number(e.target.value))}
+              className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:ring-2 focus:border-transparent transition-all appearance-none"
+              style={{ "--tw-ring-color": `${colors.accent}40` } as any}
+            >
+              {unitOptions.map((opt, i) => (
+                <option key={i} value={i}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
         </div>
+
+        {/* Computed grams hint */}
+        <p className="text-xs text-neutral-400 -mt-1">
+          ≈ {grams} g total
+        </p>
 
         {/* Macro preview pills */}
         <div className="grid grid-cols-4 gap-2 text-center text-xs">
           {[
-            { label: "cal", value: Math.round(Number(food.calories) * mult), color: "#059669", bg: "#f0fdf4" },
-            { label: "protein", value: `${Math.round(Number(food.proteinG) * mult)}g`, color: "#6366f1", bg: "#eef2ff" },
-            { label: "carbs", value: `${Math.round(Number(food.carbsG) * mult)}g`, color: "#f59e0b", bg: "#fffbeb" },
-            { label: "fat", value: `${Math.round(Number(food.fatG) * mult)}g`, color: "#f43f5e", bg: "#fff1f2" },
+            { label: "cal", value: scaled.calories, color: "#059669", bg: "#f0fdf4" },
+            { label: "protein", value: `${scaled.proteinG}g`, color: "#6366f1", bg: "#eef2ff" },
+            { label: "carbs", value: `${scaled.carbsG}g`, color: "#f59e0b", bg: "#fffbeb" },
+            { label: "fat", value: `${scaled.fatG}g`, color: "#f43f5e", bg: "#fff1f2" },
           ].map((m) => (
             <div key={m.label} className="rounded-xl p-2.5" style={{ backgroundColor: m.bg }}>
               <p className="font-bold" style={{ color: m.color }}>{m.value}</p>
@@ -342,7 +403,7 @@ export function AddFoodModal({ slot, isOpen, onClose, onAdded }: AddFoodModalPro
                       {results.map((food) => (
                         <li key={food.id}>
                           <button
-                            onClick={() => { setSelected(food); setServings("1"); }}
+                            onClick={() => { setSelected(food); setAmount("1"); setUnitIdx(0); }}
                             className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-neutral-50 transition-colors group"
                           >
                             <div className="flex items-center justify-between">
