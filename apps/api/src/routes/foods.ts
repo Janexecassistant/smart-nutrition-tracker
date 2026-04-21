@@ -55,26 +55,120 @@ foodRoutes.get("/search", zValidator("query", FoodSearchSchema), async (c) => {
   let localResults: any[] = [];
 
   // 1. Try Typesense first (fast, typo-tolerant)
+  let typesenseHit = false;
   try {
     const tsResult = await searchFoods({ query, limit, offset });
     localResults = tsResult.hits;
+    typesenseHit = true;
   } catch {
-    // 2. Fallback: Postgres ILIKE
+    typesenseHit = false;
+  }
+
+  // 2. Fallback: Postgres full-text search on search_vector
+  //    Strategy: tokenize query, build OR prefix tsquery (onion:* | sliced:*),
+  //    rank with ts_rank_cd, then hard-boost whole-foods and unbranded entries
+  //    so "onion sliced" returns "Onions, raw" before "Signature Sliced Onion
+  //    Bagel". Falls back to ILIKE if tsquery parsing fails.
+  if (!typesenseHit) {
     try {
-      localResults = await db
-        .select()
-        .from(foods)
-        .where(
-          or(
-            ilike(foods.name, `%${query}%`),
-            ilike(foods.brand, `%${query}%`)
+      const terms = query
+        .toLowerCase()
+        .split(/\s+/)
+        .map((t) => t.replace(/[^a-z0-9]/g, ""))
+        .filter((t) => t.length > 0);
+
+      if (terms.length > 0) {
+        // e.g. "onion sliced" → "onion:* | sliced:*"
+        const tsqueryStr = terms.map((t) => `${t}:*`).join(" | ");
+        // Substring pattern for tie-break / "exact phrase" boost.
+        const fullPattern = `%${query.toLowerCase()}%`;
+        const firstTerm = terms[0];
+        const firstTermPattern = `%${firstTerm}%`;
+
+        const rows = await db.execute(sql`
+          SELECT
+            f.id,
+            f.name,
+            f.brand,
+            f.barcode,
+            f.source,
+            f.source_id,
+            f.serving_size_g,
+            f.serving_label,
+            f.calories,
+            f.protein_g,
+            f.carbs_g,
+            f.fat_g,
+            f.fiber_g,
+            f.sugar_g,
+            f.sodium_mg,
+            f.category,
+            f.tags,
+            f.is_verified,
+            f.created_at,
+            f.updated_at,
+            ts_rank_cd(f.search_vector, q.tsq) AS rank
+          FROM foods f,
+               to_tsquery('english', ${tsqueryStr}) q(tsq)
+          WHERE f.search_vector @@ q.tsq
+          ORDER BY
+            -- 1. Exact full-phrase matches in name win outright
+            (LOWER(f.name) LIKE ${fullPattern}) DESC,
+            -- 2. First-term matches in name (e.g. "onion..." when searching "onion sliced")
+            (LOWER(f.name) LIKE ${firstTermPattern}) DESC,
+            -- 3. Whole-foods (Foundation/SR Legacy with no brand) ranked above branded
+            (f.brand IS NULL) DESC,
+            ('whole_food' = ANY(f.tags)) DESC,
+            -- 4. Full-text relevance
+            ts_rank_cd(f.search_vector, q.tsq) DESC,
+            -- 5. Shorter names win (less descriptive = more generic)
+            LENGTH(f.name) ASC
+          LIMIT ${limit}
+          OFFSET ${offset};
+        `);
+
+        localResults = (rows as any[]).map((r: any) => ({
+          id: r.id,
+          name: r.name,
+          brand: r.brand,
+          barcode: r.barcode,
+          source: r.source,
+          sourceId: r.source_id,
+          servingSizeG: r.serving_size_g,
+          servingLabel: r.serving_label,
+          calories: r.calories,
+          proteinG: r.protein_g,
+          carbsG: r.carbs_g,
+          fatG: r.fat_g,
+          fiberG: r.fiber_g,
+          sugarG: r.sugar_g,
+          sodiumMg: r.sodium_mg,
+          category: r.category,
+          tags: r.tags,
+          isVerified: r.is_verified,
+          createdAt: r.created_at,
+          updatedAt: r.updated_at,
+        }));
+      }
+    } catch (err) {
+      console.error("[Search] tsvector query failed, falling back to ILIKE:", err);
+      // 3. Last-ditch fallback: Postgres ILIKE
+      try {
+        localResults = await db
+          .select()
+          .from(foods)
+          .where(
+            or(
+              ilike(foods.name, `%${query}%`),
+              ilike(foods.brand, `%${query}%`)
+            )
           )
-        )
-        .limit(limit)
-        .offset(offset)
-        .orderBy(foods.name);
-    } catch {
-      localResults = [];
+          .limit(limit)
+          .offset(offset)
+          .orderBy(foods.name);
+      } catch {
+        localResults = [];
+      }
     }
   }
 

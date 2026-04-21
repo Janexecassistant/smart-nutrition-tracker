@@ -8,7 +8,19 @@ import {
   timestamp,
   index,
   uniqueIndex,
+  customType,
 } from "drizzle-orm/pg-core";
+
+// Postgres tsvector column — populated by the `trg_foods_search_vector`
+// trigger (see migration `add_foods_search_vector_trigger.sql`). We don't
+// write to this column directly; the trigger recomputes it whenever name /
+// brand / category / tags change. Declared here so drizzle-kit diffs don't
+// try to drop it.
+const tsvector = customType<{ data: string; driverData: string }>({
+  dataType() {
+    return "tsvector";
+  },
+});
 
 // ── Global Food Database ──────────────────────────────────────────
 
@@ -38,6 +50,9 @@ export const foods = pgTable(
     category: text("category"),
     tags: text("tags").array().default([]),
     isVerified: boolean("is_verified").default(false),
+    // Auto-populated by trg_foods_search_vector. Powers weighted FTS:
+    //   A = name, B = brand, C = category, D = tags.
+    searchVector: tsvector("search_vector"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
   },
@@ -45,6 +60,8 @@ export const foods = pgTable(
     index("idx_foods_barcode").on(table.barcode),
     index("idx_foods_category").on(table.category),
     index("idx_foods_source").on(table.source),
+    // GIN index on search_vector for fast tsquery matching.
+    index("idx_foods_search_vector").using("gin", table.searchVector),
     // Idempotent upserts rely on (source, source_id). Enforced via a partial
     // unique index created in migration `foods_unique_source_id_idx` (WHERE
     // source_id IS NOT NULL). We declare it here as a regular index so
