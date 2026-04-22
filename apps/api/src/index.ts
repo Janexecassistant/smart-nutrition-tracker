@@ -7,6 +7,8 @@ import { foodRoutes } from "./routes/foods";
 import { logRoutes } from "./routes/logs";
 import { weightRoutes } from "./routes/weight";
 import { suggestionRoutes } from "./routes/suggestions";
+import { mealRoutes } from "./routes/meals";
+import { recipeRoutes } from "./routes/recipes";
 
 const app = new Hono();
 
@@ -56,6 +58,8 @@ app.route("/api/foods", foodRoutes);
 app.route("/api/logs", logRoutes);
 app.route("/api/weight", weightRoutes);
 app.route("/api/suggestions", suggestionRoutes);
+app.route("/api/meals", mealRoutes);
+app.route("/api/recipes", recipeRoutes);
 
 // ── 404 handler ───────────────────────────────────────────────────
 

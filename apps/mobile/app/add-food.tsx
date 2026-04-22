@@ -26,7 +26,7 @@ import {
   type UnitOption,
 } from "@snt/shared";
 
-type Tab = "search" | "scan" | "quick";
+type Tab = "search" | "scan" | "quick" | "meals" | "recipes";
 
 interface FoodResult {
   id: string;
@@ -65,23 +65,38 @@ export default function AddFoodScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         {/* Tab Switcher */}
-        <View style={styles.tabs}>
-          {(["search", "scan", "quick"] as Tab[]).map((t) => (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.tabScroll}
+          contentContainerStyle={styles.tabs}
+        >
+          {(["search", "scan", "quick", "meals", "recipes"] as Tab[]).map((t) => (
             <TouchableOpacity
               key={t}
               style={[styles.tab, tab === t && styles.tabActive]}
               onPress={() => setTab(t)}
             >
               <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>
-                {t === "search" ? "🔍 Search" : t === "scan" ? "📷 Scan" : "⚡ Quick"}
+                {t === "search"
+                  ? "🔍 Search"
+                  : t === "scan"
+                    ? "📷 Scan"
+                    : t === "quick"
+                      ? "⚡ Quick"
+                      : t === "meals"
+                        ? "🍽️ Meals"
+                        : "📖 Recipes"}
               </Text>
             </TouchableOpacity>
           ))}
-        </View>
+        </ScrollView>
 
         {tab === "search" && <SearchTab slot={slot} router={router} queryClient={queryClient} />}
         {tab === "scan" && <ScanTab slot={slot} router={router} queryClient={queryClient} />}
         {tab === "quick" && <QuickAddTab slot={slot} router={router} queryClient={queryClient} />}
+        {tab === "meals" && <MealsTab slot={slot} router={router} queryClient={queryClient} />}
+        {tab === "recipes" && <RecipesTab slot={slot} router={router} queryClient={queryClient} />}
       </KeyboardAvoidingView>
     </>
   );
@@ -469,6 +484,211 @@ function QuickAddTab({ slot, router, queryClient }: any) {
   );
 }
 
+/* ── Meals Tab ─────────────────────────────────────────── */
+interface SavedMealSummary {
+  id: string;
+  name: string;
+  itemCount: number;
+  total: { calories: number; proteinG: number; carbsG: number; fatG: number };
+}
+
+function MealsTab({ slot, router, queryClient }: any) {
+  const [meals, setMeals] = useState<SavedMealSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [logging, setLogging] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await api.get<{ meals: SavedMealSummary[] }>("/meals");
+        setMeals(data.meals || []);
+      } catch { setMeals([]); }
+      setLoading(false);
+    })();
+  }, []);
+
+  const logMeal = async (m: SavedMealSummary) => {
+    setLogging(m.id);
+    try {
+      await api.post(`/meals/${m.id}/log`, { mealSlot: slot });
+      queryClient.invalidateQueries({ queryKey: ["logs", "today"] });
+      router.back();
+    } catch (err: any) {
+      Alert.alert("Error", err.message || "Failed to log meal.");
+    } finally {
+      setLogging(null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator color="#059669" />
+      </View>
+    );
+  }
+
+  if (meals.length === 0) {
+    return (
+      <View style={styles.center}>
+        <Text style={{ fontSize: 32, marginBottom: 12 }}>🍽️</Text>
+        <Text style={styles.emptyTitle}>No saved meals yet</Text>
+        <Text style={styles.emptySub}>
+          Save a meal slot from your diary to quickly re-log it here.
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView contentContainerStyle={{ padding: 16 }}>
+      {meals.map((m) => (
+        <TouchableOpacity
+          key={m.id}
+          style={styles.listCard}
+          onPress={() => logMeal(m)}
+          disabled={logging === m.id}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={styles.listCardTitle}>{m.name}</Text>
+            <Text style={styles.listCardSub}>
+              {m.itemCount} item{m.itemCount === 1 ? "" : "s"} ·{" "}
+              {Math.round(m.total.calories)} cal ·{" "}
+              {Math.round(m.total.proteinG)}g P
+            </Text>
+          </View>
+          <View style={styles.listCardCta}>
+            {logging === m.id ? (
+              <ActivityIndicator size="small" color="#059669" />
+            ) : (
+              <Text style={styles.listCardCtaText}>Log</Text>
+            )}
+          </View>
+        </TouchableOpacity>
+      ))}
+    </ScrollView>
+  );
+}
+
+/* ── Recipes Tab ───────────────────────────────────────── */
+interface RecipeSummary {
+  id: string;
+  name: string;
+  servings: number;
+  perServing: { calories: number; proteinG: number; carbsG: number; fatG: number };
+}
+
+function RecipesTab({ slot, router, queryClient }: any) {
+  const [recipes, setRecipes] = useState<RecipeSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [servingsByRecipe, setServingsByRecipe] = useState<Record<string, string>>({});
+  const [logging, setLogging] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await api.get<{ recipes: RecipeSummary[] }>("/recipes");
+        setRecipes(data.recipes || []);
+      } catch { setRecipes([]); }
+      setLoading(false);
+    })();
+  }, []);
+
+  const logRecipe = async (r: RecipeSummary) => {
+    const raw = servingsByRecipe[r.id] ?? "1";
+    const n = parseFloat(raw);
+    if (!Number.isFinite(n) || n <= 0) {
+      Alert.alert("Error", "Enter a serving count greater than 0.");
+      return;
+    }
+    setLogging(r.id);
+    try {
+      await api.post(`/recipes/${r.id}/log`, { mealSlot: slot, servings: n });
+      queryClient.invalidateQueries({ queryKey: ["logs", "today"] });
+      router.back();
+    } catch (err: any) {
+      Alert.alert("Error", err.message || "Failed to log recipe.");
+    } finally {
+      setLogging(null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator color="#059669" />
+      </View>
+    );
+  }
+
+  if (recipes.length === 0) {
+    return (
+      <View style={styles.center}>
+        <Text style={{ fontSize: 32, marginBottom: 12 }}>📖</Text>
+        <Text style={styles.emptyTitle}>No recipes yet</Text>
+        <Text style={styles.emptySub}>
+          Build a recipe from your ingredients and reuse it anytime.
+        </Text>
+        <TouchableOpacity
+          style={[styles.logButton, { paddingHorizontal: 24, marginTop: 20 }]}
+          onPress={() => router.push("/recipes/new")}
+        >
+          <Text style={styles.logButtonText}>Build a recipe</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView contentContainerStyle={{ padding: 16 }}>
+      {recipes.map((r) => {
+        const srv = servingsByRecipe[r.id] ?? "1";
+        const n = parseFloat(srv) || 0;
+        return (
+          <View key={r.id} style={styles.recipeCard}>
+            <Text style={styles.listCardTitle}>{r.name}</Text>
+            <Text style={styles.listCardSub}>
+              {Math.round(r.perServing.calories)} cal / serving ·{" "}
+              {Math.round(r.perServing.proteinG)}g P
+            </Text>
+            <View style={styles.recipeCardRow}>
+              <Text style={styles.recipeServingsLabel}>Servings</Text>
+              <TextInput
+                style={styles.recipeServingsInput}
+                keyboardType="decimal-pad"
+                value={srv}
+                onChangeText={(v) =>
+                  setServingsByRecipe({ ...servingsByRecipe, [r.id]: v })
+                }
+              />
+              <Text style={styles.recipeTotalHint}>
+                = {Math.round(r.perServing.calories * n)} cal
+              </Text>
+              <TouchableOpacity
+                style={styles.recipeAddBtn}
+                onPress={() => logRecipe(r)}
+                disabled={logging === r.id}
+              >
+                {logging === r.id ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.recipeAddBtnText}>Add</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        );
+      })}
+      <TouchableOpacity
+        style={styles.recipeNewLink}
+        onPress={() => router.push("/recipes/new")}
+      >
+        <Text style={styles.recipeNewLinkText}>+ Build a new recipe</Text>
+      </TouchableOpacity>
+    </ScrollView>
+  );
+}
+
 /* ── Shared Components ─────────────────────────────────── */
 function MacroPill({ label, value, color, unit }: { label: string; value: number; color: string; unit?: string }) {
   return (
@@ -554,8 +774,9 @@ function UnitPickerModal({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f8faf9" },
-  tabs: { flexDirection: "row", paddingHorizontal: 16, paddingTop: 8, gap: 8 },
-  tab: { flex: 1, paddingVertical: 10, borderRadius: 10, backgroundColor: "#f1f5f9", alignItems: "center" },
+  tabScroll: { flexGrow: 0, flexShrink: 0 },
+  tabs: { flexDirection: "row", paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4, gap: 8 },
+  tab: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 10, backgroundColor: "#f1f5f9", alignItems: "center" },
   tabActive: { backgroundColor: "#059669" },
   tabText: { fontSize: 14, fontWeight: "600", color: "#475569" },
   tabTextActive: { color: "#fff" },
@@ -641,4 +862,72 @@ const styles = StyleSheet.create({
     marginTop: 12, paddingVertical: 14, borderRadius: 12, backgroundColor: "#f1f5f9", alignItems: "center",
   },
   modalCloseText: { fontSize: 16, fontWeight: "600", color: "#475569" },
+
+  // Meals + Recipes tabs
+  listCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#f1f5f9",
+  },
+  listCardTitle: { fontSize: 16, fontWeight: "600", color: "#0f172a" },
+  listCardSub: { fontSize: 13, color: "#64748b", marginTop: 4 },
+  listCardCta: {
+    backgroundColor: "#ecfdf5",
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    minWidth: 56,
+    alignItems: "center",
+  },
+  listCardCtaText: { color: "#059669", fontWeight: "700", fontSize: 14 },
+  recipeCard: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#f1f5f9",
+  },
+  recipeCardRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 12,
+    gap: 8,
+  },
+  recipeServingsLabel: { fontSize: 13, color: "#64748b" },
+  recipeServingsInput: {
+    width: 60,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    fontSize: 14,
+    color: "#0f172a",
+    textAlign: "center",
+    backgroundColor: "#fff",
+  },
+  recipeTotalHint: { fontSize: 12, color: "#94a3b8", flex: 1 },
+  recipeAddBtn: {
+    backgroundColor: "#059669",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    minWidth: 60,
+    alignItems: "center",
+  },
+  recipeAddBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  recipeNewLink: {
+    marginTop: 8,
+    alignItems: "center",
+    paddingVertical: 14,
+  },
+  recipeNewLinkText: { color: "#059669", fontSize: 15, fontWeight: "600" },
+  emptyTitle: { fontSize: 17, fontWeight: "700", color: "#0f172a", marginBottom: 6 },
+  emptySub: { fontSize: 14, color: "#64748b", textAlign: "center", paddingHorizontal: 32 },
 });

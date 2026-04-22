@@ -9,14 +9,11 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
-  ImageBackground,
   ScrollView,
   StatusBar,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../src/stores/auth";
-
-const HERO = require("../../assets/images/login-bg.jpg");
 
 export default function SignUpScreen() {
   const router = useRouter();
@@ -57,7 +54,8 @@ export default function SignUpScreen() {
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" />
-      <ImageBackground source={HERO} style={styles.hero} resizeMode="cover">
+      <View style={styles.hero}>
+        <View style={styles.heroGlow} />
         <View style={styles.scrim} />
 
         <View style={styles.heroContent}>
@@ -68,7 +66,7 @@ export default function SignUpScreen() {
             Start your journey.{"\n"}Fuel your goals.
           </Text>
         </View>
-      </ImageBackground>
+      </View>
 
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -144,17 +142,27 @@ export default function SignUpScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#0f172a" },
+  root: { flex: 1, backgroundColor: "#064e3b" },
   hero: {
     position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
+    backgroundColor: "#064e3b",
+  },
+  heroGlow: {
+    position: "absolute",
+    top: -120,
+    right: -60,
+    width: 340,
+    height: 340,
+    borderRadius: 170,
+    backgroundColor: "rgba(110, 231, 183, 0.18)",
   },
   scrim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(7, 31, 23, 0.55)",
+    backgroundColor: "rgba(6, 32, 23, 0.35)",
   },
   heroContent: {
     paddingTop: 72,

@@ -7,6 +7,8 @@ import {
   StyleSheet,
   RefreshControl,
   ActivityIndicator,
+  Alert,
+  Platform,
 } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
@@ -22,6 +24,7 @@ interface MealItem {
 }
 
 interface DailyLog {
+  date?: string;
   meals: {
     breakfast: MealItem[];
     lunch: MealItem[];
@@ -317,6 +320,59 @@ export default function DashboardScreen() {
       {MEAL_SLOTS.map(({ key, label, emoji }) => {
         const items = dailyLog?.meals?.[key] || [];
         const slotCals = items.reduce((s, i) => s + i.calories, 0);
+        const hasItems = items.length > 0;
+
+        const handleSaveAsMeal = () => {
+          const logDate: string =
+            dailyLog?.date || new Date().toISOString().slice(0, 10);
+
+          const doSave = async (name: string) => {
+            const trimmed = (name || "").trim();
+            if (!trimmed) return;
+            try {
+              await api.post("/meals/from-log", {
+                name: trimmed,
+                logDate,
+                mealSlot: key,
+              });
+              Alert.alert("Saved", `"${trimmed}" is now in My Meals.`);
+            } catch (err: any) {
+              Alert.alert("Error", err.message || "Failed to save meal.");
+            }
+          };
+
+          if (Platform.OS === "ios") {
+            // @ts-ignore — Alert.prompt is iOS only
+            Alert.prompt(
+              "Save as Meal",
+              `Name this ${label.toLowerCase()} so you can re-log it later.`,
+              [
+                { text: "Cancel", style: "cancel" },
+                { text: "Save", onPress: (text?: string) => doSave(text || "") },
+              ],
+              "plain-text",
+              `${label} ${new Date(logDate).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+              })}`
+            );
+          } else {
+            // Android fallback — auto-name with slot + date
+            const auto = `${label} ${new Date(logDate).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            })}`;
+            Alert.alert(
+              "Save as Meal",
+              `Save this ${label.toLowerCase()} as "${auto}"?`,
+              [
+                { text: "Cancel", style: "cancel" },
+                { text: "Save", onPress: () => doSave(auto) },
+              ]
+            );
+          }
+        };
+
         return (
           <View key={key} style={styles.mealCard}>
             <View style={styles.mealHeader}>
@@ -332,17 +388,44 @@ export default function DashboardScreen() {
                 <Text style={styles.foodCals}>{item.calories}</Text>
               </View>
             ))}
-            <TouchableOpacity
-              style={styles.addButton}
-              onPress={() =>
-                router.push({ pathname: "/add-food", params: { slot: key } })
-              }
-            >
-              <Text style={styles.addButtonText}>+ Add Food</Text>
-            </TouchableOpacity>
+            <View style={styles.mealActionsRow}>
+              <TouchableOpacity
+                style={styles.addButton}
+                onPress={() =>
+                  router.push({ pathname: "/add-food", params: { slot: key } })
+                }
+              >
+                <Text style={styles.addButtonText}>+ Add Food</Text>
+              </TouchableOpacity>
+              {hasItems && (
+                <TouchableOpacity
+                  style={styles.saveAsMealButton}
+                  onPress={handleSaveAsMeal}
+                >
+                  <Text style={styles.saveAsMealText}>Save as meal</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         );
       })}
+
+      {/* ── Recipes Quick Link ───────────────────────────── */}
+      <View style={styles.recipesRow}>
+        <TouchableOpacity
+          style={styles.recipesLink}
+          onPress={() => router.push("/recipes")}
+        >
+          <Text style={styles.recipesLinkIcon}>📖</Text>
+          <Text style={styles.recipesLinkText}>My Recipes</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.recipesLinkAlt}
+          onPress={() => router.push("/recipes/new")}
+        >
+          <Text style={styles.recipesLinkAltText}>+ New Recipe</Text>
+        </TouchableOpacity>
+      </View>
 
       <View style={{ height: 32 }} />
     </ScrollView>
@@ -482,6 +565,53 @@ const styles = StyleSheet.create({
   },
   foodName: { fontSize: 15, color: "#404040", flex: 1 },
   foodCals: { fontSize: 15, color: "#475569" },
-  addButton: { paddingVertical: 10, alignItems: "center", marginTop: 4 },
+  addButton: { paddingVertical: 10, alignItems: "center", marginTop: 4, flex: 1 },
   addButtonText: { color: "#059669", fontSize: 15, fontWeight: "600" },
+  mealActionsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 4,
+    gap: 8,
+  },
+  saveAsMealButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: "#f1f5f9",
+  },
+  saveAsMealText: { color: "#475569", fontSize: 13, fontWeight: "600" },
+
+  // ── Recipes quick link row ─────────────────────────────
+  recipesRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginHorizontal: 20,
+    marginTop: 16,
+  },
+  recipesLink: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    paddingVertical: 14,
+    shadowColor: "#064e3b",
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  recipesLinkIcon: { fontSize: 18 },
+  recipesLinkText: { color: "#0f172a", fontSize: 15, fontWeight: "600" },
+  recipesLinkAlt: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#059669",
+    borderRadius: 16,
+    paddingVertical: 14,
+  },
+  recipesLinkAltText: { color: "#fff", fontSize: 15, fontWeight: "700" },
 });

@@ -34,7 +34,8 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://sntapi-production.up.railway.app",
         "EXPO_PUBLIC_SUPABASE_URL": "https://ptakhmjwuyfpnuxuqhow.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_Budzsr1vV3GDh7pSnvszdw_FWntiAte"
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_Budzsr1vV3GDh7pSnvszdw_FWntiAte",
+        "EXPO_NO_DOCTOR": "1"
       },
       "channel": "production"
     }

@@ -92,6 +92,18 @@ export default function RootLayout() {
               presentation: "modal",
             }}
           />
+          <Stack.Screen
+            name="recipes/index"
+            options={{ title: "My Recipes" }}
+          />
+          <Stack.Screen
+            name="recipes/new"
+            options={{ title: "New Recipe", presentation: "modal" }}
+          />
+          <Stack.Screen
+            name="recipes/[id]"
+            options={{ title: "Edit Recipe" }}
+          />
         </Stack>
       </AuthGate>
     </QueryClientProvider>

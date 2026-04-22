@@ -129,6 +129,47 @@ export const CreateRecipeSchema = z.object({
 
 export type CreateRecipeInput = z.infer<typeof CreateRecipeSchema>;
 
+export const LogRecipeSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  mealSlot: MealSlotSchema,
+  servings: z.number().positive().max(20).default(1),
+});
+
+export type LogRecipeInput = z.infer<typeof LogRecipeSchema>;
+
+// ── Saved Meals ───────────────────────────────────────────────────
+
+export const MealItemSchema = z.object({
+  foodId: z.string().uuid(),
+  foodType: z.enum(["global", "custom", "recipe"]),
+  quantityG: z.number().positive(),
+  servingLabel: z.string().max(100).optional(),
+});
+
+export const CreateMealSchema = z.object({
+  name: z.string().min(1).max(500),
+  items: z.array(MealItemSchema).min(1).max(50),
+});
+
+export type CreateMealInput = z.infer<typeof CreateMealSchema>;
+
+// Shortcut: create a saved meal from an existing day's logged items
+// in a specific meal slot (e.g. "save today's breakfast as a meal").
+export const CreateMealFromLogSchema = z.object({
+  name: z.string().min(1).max(500),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  mealSlot: MealSlotSchema,
+});
+
+export type CreateMealFromLogInput = z.infer<typeof CreateMealFromLogSchema>;
+
+export const LogMealSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  mealSlot: MealSlotSchema,
+});
+
+export type LogMealInput = z.infer<typeof LogMealSchema>;
+
 // ── Weight log ────────────────────────────────────────────────────
 
 export const LogWeightSchema = z.object({

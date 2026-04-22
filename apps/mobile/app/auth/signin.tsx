@@ -9,17 +9,11 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
-  ImageBackground,
   ScrollView,
   StatusBar,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../src/stores/auth";
-
-// Food photography hero. Run this once to fetch it:
-//   curl -sSL "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1200&q=85" \
-//     -o apps/mobile/assets/images/login-bg.jpg
-const HERO = require("../../assets/images/login-bg.jpg");
 
 export default function SignInScreen() {
   const router = useRouter();
@@ -47,8 +41,9 @@ export default function SignInScreen() {
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" />
-      <ImageBackground source={HERO} style={styles.hero} resizeMode="cover">
-        {/* Dark scrim so text stays readable over any photo */}
+      <View style={styles.hero}>
+        {/* Soft depth — deeper green overlay toward top, subtle glow accent */}
+        <View style={styles.heroGlow} />
         <View style={styles.scrim} />
 
         <View style={styles.heroContent}>
@@ -59,7 +54,7 @@ export default function SignInScreen() {
             Track what you eat.{"\n"}Reach your goals.
           </Text>
         </View>
-      </ImageBackground>
+      </View>
 
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -126,17 +121,27 @@ export default function SignInScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#0f172a" },
+  root: { flex: 1, backgroundColor: "#064e3b" },
   hero: {
     position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
+    backgroundColor: "#064e3b",
+  },
+  heroGlow: {
+    position: "absolute",
+    top: -120,
+    right: -60,
+    width: 340,
+    height: 340,
+    borderRadius: 170,
+    backgroundColor: "rgba(110, 231, 183, 0.18)",
   },
   scrim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(7, 31, 23, 0.55)",
+    backgroundColor: "rgba(6, 32, 23, 0.35)",
   },
   heroContent: {
     paddingTop: 80,

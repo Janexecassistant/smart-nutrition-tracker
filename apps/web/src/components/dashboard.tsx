@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { AddFoodModal } from "./add-food-modal";
@@ -117,9 +118,22 @@ export function Dashboard() {
             key={slot}
             slot={slot}
             items={log?.meals?.[slot] ?? []}
+            logDate={log?.date ?? new Date().toISOString().split("T")[0]}
             onAdd={() => setAddingSlot(slot)}
+            onSavedAsMeal={() => queryClient.invalidateQueries({ queryKey: ["saved-meals"] })}
           />
         ))}
+
+        {/* Quick link to recipes */}
+        <div className="flex items-center justify-center gap-4 pt-2 pb-4 text-sm">
+          <Link href="/recipes" className="text-emerald-700 hover:text-emerald-800 font-medium">
+            📖 My Recipes
+          </Link>
+          <span className="text-neutral-300">·</span>
+          <Link href="/recipes/new" className="text-emerald-700 hover:text-emerald-800 font-medium">
+            + New Recipe
+          </Link>
+        </div>
       </div>
 
       {/* Add Food Modal */}
@@ -256,15 +270,45 @@ function MacroBar({
 function MealSlotCard({
   slot,
   items,
+  logDate,
   onAdd,
+  onSavedAsMeal,
 }: {
   slot: string;
   items: any[];
+  logDate: string;
   onAdd: () => void;
+  onSavedAsMeal: () => void;
 }) {
   const label = slot.charAt(0).toUpperCase() + slot.slice(1);
   const meta = MEAL_META[slot] || MEAL_META.snack;
   const slotCals = items.reduce((sum, i) => sum + Number(i.calories || 0), 0);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  async function saveAsMeal() {
+    if (items.length === 0 || saving) return;
+    const name = window.prompt(
+      `Name this meal`,
+      `My ${label}`,
+    );
+    if (!name) return;
+    setSaving(true);
+    try {
+      await api.post("/meals/from-log", {
+        name,
+        date: logDate,
+        mealSlot: slot,
+      });
+      setSaved(true);
+      onSavedAsMeal();
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err: any) {
+      alert(err.message || "Failed to save meal");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-emerald-50 overflow-hidden">
@@ -285,16 +329,42 @@ function MealSlotCard({
             </p>
           </div>
         </div>
-        <button
-          onClick={onAdd}
-          className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
-          style={{ color: meta.accent, backgroundColor: `${meta.accent}14` }}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-          Add
-        </button>
+        <div className="flex items-center gap-1.5">
+          {items.length > 0 && (
+            <button
+              onClick={saveAsMeal}
+              disabled={saving}
+              title="Save this meal for quick re-logging later"
+              className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg text-neutral-500 hover:text-neutral-700 hover:bg-neutral-50 disabled:opacity-40 transition-colors"
+            >
+              {saved ? (
+                <>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  Saved
+                </>
+              ) : (
+                <>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                  </svg>
+                  {saving ? "Saving..." : "Save"}
+                </>
+              )}
+            </button>
+          )}
+          <button
+            onClick={onAdd}
+            className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+            style={{ color: meta.accent, backgroundColor: `${meta.accent}14` }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            Add
+          </button>
+        </div>
       </div>
 
       {/* Items list */}

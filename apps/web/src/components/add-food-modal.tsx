@@ -20,7 +20,7 @@ interface AddFoodModalProps {
   onAdded: () => void;
 }
 
-type Tab = "search" | "scan" | "quick";
+type Tab = "search" | "scan" | "quick" | "meals" | "recipes";
 
 interface FoodResult {
   id: string;
@@ -37,6 +37,20 @@ interface FoodResult {
   servingLabel?: string | null;
   imageUrl?: string | null;
   portions?: FoodPortion[];
+}
+
+interface SavedMealSummary {
+  id: string;
+  name: string;
+  itemCount: number;
+  total: { calories: number; proteinG: number; carbsG: number; fatG: number };
+}
+
+interface RecipeSummary {
+  id: string;
+  name: string;
+  servings: number;
+  perServing: { calories: number; proteinG: number; carbsG: number; fatG: number };
 }
 
 const SLOT_COLORS: Record<string, { gradient: string; accent: string; bg: string }> = {
@@ -72,6 +86,13 @@ export function AddFoodModal({ slot, isOpen, onClose, onAdded }: AddFoodModalPro
   const [quickCarbs, setQuickCarbs] = useState("");
   const [quickFat, setQuickFat] = useState("");
 
+  // Meals + Recipes state
+  const [savedMeals, setSavedMeals] = useState<SavedMealSummary[]>([]);
+  const [savedMealsLoaded, setSavedMealsLoaded] = useState(false);
+  const [recipes, setRecipes] = useState<RecipeSummary[]>([]);
+  const [recipesLoaded, setRecipesLoaded] = useState(false);
+  const [recipeServings, setRecipeServings] = useState<Record<string, string>>({});
+
   const colors = SLOT_COLORS[slot] || SLOT_COLORS.snack;
 
   useEffect(() => {
@@ -84,8 +105,56 @@ export function AddFoodModal({ slot, isOpen, onClose, onAdded }: AddFoodModalPro
       setError(""); setTab("search");
       setQuickName(""); setQuickCal(""); setQuickProtein(""); setQuickCarbs(""); setQuickFat("");
       setScanResult(null); setScanLoading(false); setScanError("");
+      setSavedMealsLoaded(false); setRecipesLoaded(false);
+      setSavedMeals([]); setRecipes([]); setRecipeServings({});
     }
   }, [isOpen]);
+
+  // Lazy-load meals + recipes when their tab opens for the first time
+  useEffect(() => {
+    if (!isOpen) return;
+    if (tab === "meals" && !savedMealsLoaded) {
+      (async () => {
+        try {
+          const data = await api.get("/meals");
+          setSavedMeals(data.meals || []);
+        } catch { setSavedMeals([]); }
+        finally { setSavedMealsLoaded(true); }
+      })();
+    }
+    if (tab === "recipes" && !recipesLoaded) {
+      (async () => {
+        try {
+          const data = await api.get("/recipes");
+          setRecipes(data.recipes || []);
+        } catch { setRecipes([]); }
+        finally { setRecipesLoaded(true); }
+      })();
+    }
+  }, [isOpen, tab, savedMealsLoaded, recipesLoaded]);
+
+  async function logSavedMeal(mealId: string) {
+    setSaving(true); setError("");
+    try {
+      await api.post(`/meals/${mealId}/log`, { mealSlot: slot });
+      onAdded(); onClose();
+    } catch (err: any) {
+      setError(err.message || "Failed to log meal");
+    } finally { setSaving(false); }
+  }
+
+  async function logRecipe(recipeId: string, servings: number) {
+    setSaving(true); setError("");
+    try {
+      await api.post(`/recipes/${recipeId}/log`, {
+        mealSlot: slot,
+        servings,
+      });
+      onAdded(); onClose();
+    } catch (err: any) {
+      setError(err.message || "Failed to log recipe");
+    } finally { setSaving(false); }
+  }
 
   const searchFoods = useCallback(async (q: string) => {
     if (q.length < 2) { setResults([]); return; }
@@ -330,22 +399,24 @@ export function AddFoodModal({ slot, isOpen, onClose, onAdded }: AddFoodModalPro
           </div>
 
           {/* Tabs - glass style */}
-          <div className="flex gap-1 bg-black/20 rounded-lg p-0.5">
+          <div className="flex gap-0.5 bg-black/20 rounded-lg p-0.5">
             {([
               { key: "search" as Tab, label: "Search", icon: "🔍" },
               { key: "scan" as Tab, label: "Scan", icon: "📷" },
-              { key: "quick" as Tab, label: "Quick Add", icon: "⚡" },
+              { key: "quick" as Tab, label: "Quick", icon: "⚡" },
+              { key: "meals" as Tab, label: "Meals", icon: "🍽️" },
+              { key: "recipes" as Tab, label: "Recipes", icon: "📖" },
             ]).map((t) => (
               <button
                 key={t.key}
                 onClick={() => setTab(t.key)}
-                className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${
+                className={`flex-1 py-1.5 text-[11px] font-medium rounded-md transition-all ${
                   tab === t.key
                     ? "bg-white text-neutral-800 shadow-sm"
                     : "text-white/80 hover:text-white"
                 }`}
               >
-                <span className="mr-1">{t.icon}</span>
+                <span className="mr-0.5">{t.icon}</span>
                 {t.label}
               </button>
             ))}
@@ -468,7 +539,7 @@ export function AddFoodModal({ slot, isOpen, onClose, onAdded }: AddFoodModalPro
                 <FoodDetailView food={scanResult} />
               )}
             </div>
-          ) : (
+          ) : tab === "quick" ? (
             /* Quick Add Tab */
             <div className="space-y-3">
               <div>
@@ -504,6 +575,129 @@ export function AddFoodModal({ slot, isOpen, onClose, onAdded }: AddFoodModalPro
                 ))}
               </div>
             </div>
+          ) : tab === "meals" ? (
+            /* Saved Meals Tab */
+            <div className="space-y-2">
+              {!savedMealsLoaded ? (
+                <div className="flex items-center justify-center py-8 gap-2">
+                  <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${colors.accent} transparent transparent transparent` }} />
+                  <p className="text-sm text-neutral-400">Loading meals...</p>
+                </div>
+              ) : savedMeals.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="w-12 h-12 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <span className="text-xl">🍽️</span>
+                  </div>
+                  <p className="text-sm text-neutral-500 mb-1">No saved meals yet</p>
+                  <p className="text-xs text-neutral-400">
+                    Save a meal slot from your diary to reuse it.
+                  </p>
+                </div>
+              ) : (
+                <ul className="space-y-1.5">
+                  {savedMeals.map((m) => (
+                    <li key={m.id}>
+                      <button
+                        onClick={() => logSavedMeal(m.id)}
+                        disabled={saving}
+                        className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-neutral-50 transition-colors disabled:opacity-40 border border-neutral-100"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-neutral-800 truncate">{m.name}</p>
+                            <p className="text-xs text-neutral-400 mt-0.5">
+                              {m.itemCount} item{m.itemCount === 1 ? "" : "s"} ·{" "}
+                              {Math.round(m.total.calories)} cal ·{" "}
+                              {Math.round(m.total.proteinG)}g P
+                            </p>
+                          </div>
+                          <span
+                            className="text-xs font-semibold whitespace-nowrap px-2.5 py-1 rounded-lg"
+                            style={{ color: colors.accent, backgroundColor: `${colors.accent}14` }}
+                          >
+                            Log
+                          </span>
+                        </div>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ) : (
+            /* Recipes Tab */
+            <div className="space-y-2">
+              {!recipesLoaded ? (
+                <div className="flex items-center justify-center py-8 gap-2">
+                  <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${colors.accent} transparent transparent transparent` }} />
+                  <p className="text-sm text-neutral-400">Loading recipes...</p>
+                </div>
+              ) : recipes.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="w-12 h-12 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <span className="text-xl">📖</span>
+                  </div>
+                  <p className="text-sm text-neutral-500 mb-1">No recipes yet</p>
+                  <a
+                    href="/recipes/new"
+                    className="text-sm font-medium mt-2 inline-block"
+                    style={{ color: colors.accent }}
+                  >
+                    Build your first recipe →
+                  </a>
+                </div>
+              ) : (
+                <ul className="space-y-1.5">
+                  {recipes.map((r) => {
+                    const srv = recipeServings[r.id] ?? "1";
+                    const n = parseFloat(srv) || 0;
+                    const cal = Math.round(r.perServing.calories * n);
+                    const prot = Math.round(r.perServing.proteinG * n);
+                    return (
+                      <li key={r.id} className="border border-neutral-100 rounded-xl px-3 py-2.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-neutral-800 truncate">{r.name}</p>
+                            <p className="text-xs text-neutral-400 mt-0.5">
+                              {Math.round(r.perServing.calories)} cal / serving ·{" "}
+                              {Math.round(r.perServing.proteinG)}g P · {r.servings} servings total
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 mt-2">
+                          <div className="flex items-center gap-1.5 flex-1">
+                            <label className="text-xs text-neutral-500">Log</label>
+                            <input
+                              type="number"
+                              min="0.25"
+                              step="0.25"
+                              value={srv}
+                              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                                setRecipeServings({ ...recipeServings, [r.id]: e.target.value })
+                              }
+                              className="w-16 px-2 py-1 bg-neutral-50 border border-neutral-200 rounded-lg text-xs outline-none focus:ring-2"
+                              style={{ "--tw-ring-color": `${colors.accent}40` } as any}
+                            />
+                            <span className="text-xs text-neutral-500">serving{n === 1 ? "" : "s"}</span>
+                            <span className="text-xs text-neutral-400 ml-1">
+                              · {cal} cal · {prot}g P
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => logRecipe(r.id, n)}
+                            disabled={saving || n <= 0}
+                            className="text-xs font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap disabled:opacity-40"
+                            style={{ color: colors.accent, backgroundColor: `${colors.accent}14` }}
+                          >
+                            Add
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
           )}
         </div>
 
@@ -513,24 +707,26 @@ export function AddFoodModal({ slot, isOpen, onClose, onAdded }: AddFoodModalPro
         )}
 
         {/* Footer */}
-        <div className="px-4 py-3 border-t border-neutral-100">
-          {tab === "search" ? (
-            <button onClick={logFood} disabled={!selected || saving}
-              className={`w-full py-2.5 text-white font-semibold rounded-xl bg-gradient-to-r ${colors.gradient} hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-sm shadow-sm`}>
-              {saving ? "Logging..." : "Log Food"}
-            </button>
-          ) : tab === "scan" ? (
-            <button onClick={logScannedFood} disabled={!scanResult || saving}
-              className={`w-full py-2.5 text-white font-semibold rounded-xl bg-gradient-to-r ${colors.gradient} hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-sm shadow-sm`}>
-              {saving ? "Logging..." : "Log Scanned Food"}
-            </button>
-          ) : (
-            <button onClick={logQuickAdd} disabled={!quickName || !quickCal || saving}
-              className={`w-full py-2.5 text-white font-semibold rounded-xl bg-gradient-to-r ${colors.gradient} hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-sm shadow-sm`}>
-              {saving ? "Logging..." : "Quick Add"}
-            </button>
-          )}
-        </div>
+        {(tab === "search" || tab === "scan" || tab === "quick") && (
+          <div className="px-4 py-3 border-t border-neutral-100">
+            {tab === "search" ? (
+              <button onClick={logFood} disabled={!selected || saving}
+                className={`w-full py-2.5 text-white font-semibold rounded-xl bg-gradient-to-r ${colors.gradient} hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-sm shadow-sm`}>
+                {saving ? "Logging..." : "Log Food"}
+              </button>
+            ) : tab === "scan" ? (
+              <button onClick={logScannedFood} disabled={!scanResult || saving}
+                className={`w-full py-2.5 text-white font-semibold rounded-xl bg-gradient-to-r ${colors.gradient} hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-sm shadow-sm`}>
+                {saving ? "Logging..." : "Log Scanned Food"}
+              </button>
+            ) : (
+              <button onClick={logQuickAdd} disabled={!quickName || !quickCal || saving}
+                className={`w-full py-2.5 text-white font-semibold rounded-xl bg-gradient-to-r ${colors.gradient} hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-sm shadow-sm`}>
+                {saving ? "Logging..." : "Quick Add"}
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
