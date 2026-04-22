@@ -15,7 +15,10 @@ interface AuthState {
   supabase: typeof supabase;
   isLoading: boolean;
   hasProfile: boolean | null; // null = not checked yet
-  signUp: (email: string, password: string) => Promise<void>;
+  signUp: (
+    email: string,
+    password: string
+  ) => Promise<{ hasSession: boolean; needsEmailConfirmation: boolean }>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   initialize: () => Promise<void>;
@@ -73,8 +76,13 @@ export const useAuth = create<AuthState>((set, get) => ({
   },
 
   signUp: async (email, password) => {
-    const { error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) throw error;
+    // If Supabase has "Confirm email" enabled, signUp returns 200 but
+    // session is null until the user clicks the confirmation link.
+    // Caller must NOT proceed to onboarding in that case.
+    const hasSession = !!data.session;
+    return { hasSession, needsEmailConfirmation: !hasSession };
   },
 
   signIn: async (email, password) => {

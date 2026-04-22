@@ -15,6 +15,7 @@ export default function SignUpPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [confirmSent, setConfirmSent] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -32,8 +33,21 @@ export default function SignUpPage() {
 
     setLoading(true);
     try {
-      await signUp(email, password);
-      router.push("/onboarding");
+      const { hasSession, needsEmailConfirmation } = await signUp(
+        email,
+        password
+      );
+      if (needsEmailConfirmation) {
+        // Supabase requires email confirmation — don't push to onboarding
+        // until they click the link. Otherwise they'd complete onboarding
+        // without a session and bounce to the login screen with "Invalid
+        // credentials" because their email is still unconfirmed.
+        setConfirmSent(true);
+        return;
+      }
+      if (hasSession) {
+        router.push("/onboarding");
+      }
     } catch (err: any) {
       setError(err.message || "Something went wrong");
     } finally {
@@ -79,13 +93,29 @@ export default function SignUpPage() {
 
           <div className="mb-8">
             <h2 className="text-3xl font-bold text-neutral-900">
-              Create your account
+              {confirmSent ? "Check your email" : "Create your account"}
             </h2>
             <p className="text-neutral-500 mt-2">
-              Free to start. No credit card required.
+              {confirmSent
+                ? `We sent a confirmation link to ${email}. Click it to finish setting up your account.`
+                : "Free to start. No credit card required."}
             </p>
           </div>
 
+          {confirmSent && (
+            <div className="bg-emerald-50 border border-emerald-100 text-emerald-800 text-sm px-4 py-3 rounded-xl mb-6">
+              Once you confirm, come back and{" "}
+              <a
+                href="/auth/signin"
+                className="font-semibold underline hover:no-underline"
+              >
+                sign in
+              </a>{" "}
+              to finish onboarding.
+            </div>
+          )}
+
+          {!confirmSent && (
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <div className="bg-red-50 border border-red-100 text-red-700 text-sm px-4 py-3 rounded-xl">
@@ -143,29 +173,34 @@ export default function SignUpPage() {
               {loading ? "Creating account..." : "Create Account"}
             </button>
           </form>
+          )}
 
-          {/* Divider */}
-          <div className="flex items-center gap-3 my-6">
-            <div className="flex-1 h-px bg-neutral-200" />
-            <span className="text-sm text-neutral-400">or</span>
-            <div className="flex-1 h-px bg-neutral-200" />
-          </div>
+          {!confirmSent && (
+            <>
+              {/* Divider */}
+              <div className="flex items-center gap-3 my-6">
+                <div className="flex-1 h-px bg-neutral-200" />
+                <span className="text-sm text-neutral-400">or</span>
+                <div className="flex-1 h-px bg-neutral-200" />
+              </div>
 
-          {/* OAuth buttons (Phase 1 fast-follow) */}
-          <div className="space-y-3">
-            <button
-              disabled
-              className="w-full py-3 border border-neutral-200 rounded-xl text-sm font-medium text-neutral-500 flex items-center justify-center gap-2 opacity-60"
-            >
-              Continue with Google (coming soon)
-            </button>
-            <button
-              disabled
-              className="w-full py-3 border border-neutral-200 rounded-xl text-sm font-medium text-neutral-500 flex items-center justify-center gap-2 opacity-60"
-            >
-              Continue with Apple (coming soon)
-            </button>
-          </div>
+              {/* OAuth buttons (Phase 1 fast-follow) */}
+              <div className="space-y-3">
+                <button
+                  disabled
+                  className="w-full py-3 border border-neutral-200 rounded-xl text-sm font-medium text-neutral-500 flex items-center justify-center gap-2 opacity-60"
+                >
+                  Continue with Google (coming soon)
+                </button>
+                <button
+                  disabled
+                  className="w-full py-3 border border-neutral-200 rounded-xl text-sm font-medium text-neutral-500 flex items-center justify-center gap-2 opacity-60"
+                >
+                  Continue with Apple (coming soon)
+                </button>
+              </div>
+            </>
+          )}
 
           <p className="text-center text-sm text-neutral-500 mt-6">
             Already have an account?{" "}

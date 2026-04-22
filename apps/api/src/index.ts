@@ -19,11 +19,13 @@ app.use(
   "*",
   cors({
     origin: (origin) => {
-      // Allow local dev origins + Expo Go on any LAN IP + Vercel deployments
+      // Allow local dev origins + Expo Go on any LAN IP + Vercel + prod domain
       const allowed = [
         "http://localhost:3000",
         "http://localhost:8081",
         "http://localhost:19006",
+        "https://smartnutritiontracker.com",
+        "https://www.smartnutritiontracker.com",
       ];
       if (!origin) return allowed[0]; // same-origin requests
       if (allowed.includes(origin)) return origin;

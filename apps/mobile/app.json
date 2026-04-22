@@ -2,13 +2,13 @@
   "expo": {
     "name": "Smart Nutrition Tracker",
     "slug": "smart-nutrition-tracker",
-    "version": "1.0.1",
+    "version": "1.0.4",
     "platforms": ["ios", "android"],
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "scheme": "snt",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -37,7 +37,7 @@
         "backgroundColor": "#059669"
       },
       "package": "com.smartnutritiontracker.app",
-      "versionCode": 3,
+      "versionCode": 4,
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.VIBRATE",
@@ -85,6 +85,7 @@
       "policy": "appVersion"
     },
     "updates": {
+      "enabled": false,
       "url": "https://u.expo.dev/be10b52b-3f1b-45d9-8f8d-6efc7a27f46f"
     }
   }
