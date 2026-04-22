@@ -2,15 +2,23 @@
  * Smart Nutrition Tracker — Service Worker
  *
  * Strategy:
- * - App shell (HTML, CSS, JS) → Cache-first, refresh in background
- * - API calls → Network-first, fall back to cache for offline reads
- * - Images → Cache-first with long TTL
+ * - Hashed Next.js chunks (/_next/static/*) → cache-first (immutable, safe to keep)
+ * - Everything else same-origin (HTML pages, manifest, RSC payloads) → network-first
+ *   with cache fallback. This guarantees new deployments actually ship instead of
+ *   users getting pinned to an old HTML shell that references gone-away chunks.
+ * - API calls (Railway API, cross-origin /api) → network-first
+ * - Images under /icons/ → cache-first with long TTL
+ *
+ * IMPORTANT: bump CACHE_NAME on every SW strategy change so the activate step
+ * drops stale caches for existing users. The previous `snt-v2` cache was
+ * pinning returning users to an older deployment that 404'd on /profile and
+ * bounced them back to /onboarding forever.
  */
 
-const CACHE_NAME = "snt-v2";
-const APP_SHELL = ["/", "/manifest.json", "/offline.html"];
+const CACHE_NAME = "snt-v3";
+const APP_SHELL = ["/manifest.json", "/offline.html"];
 
-// ── Install: pre-cache app shell ─────────────────────────────────
+// ── Install: pre-cache minimal app shell ─────────────────────────
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL))
@@ -37,19 +45,40 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Skip non-GET and cross-origin requests
+  // Skip non-GET requests entirely
   if (request.method !== "GET") return;
-  if (url.origin !== self.location.origin && !url.pathname.startsWith("/api"))
-    return;
 
-  // API calls → network-first
-  if (url.pathname.startsWith("/api") || url.hostname !== self.location.hostname) {
+  // Cross-origin requests: only intercept API calls under /api so offline
+  // reads still work. Let everything else (fonts, CDNs, analytics) hit
+  // the network directly.
+  if (url.origin !== self.location.origin) {
+    if (url.pathname.startsWith("/api")) {
+      event.respondWith(networkFirst(request));
+    }
+    return;
+  }
+
+  // Same-origin /api/* → network-first (fresh data, fall back to cache offline)
+  if (url.pathname.startsWith("/api")) {
     event.respondWith(networkFirst(request));
     return;
   }
 
-  // Static assets and pages → cache-first
-  event.respondWith(cacheFirst(request));
+  // Immutable hashed assets → cache-first (filename hash changes on every
+  // meaningful change, so stale cache can never serve mismatched content)
+  if (url.pathname.startsWith("/_next/static/")) {
+    event.respondWith(cacheFirst(request));
+    return;
+  }
+
+  // App icons → cache-first (rarely change, fine to keep long-term)
+  if (url.pathname.startsWith("/icons/")) {
+    event.respondWith(cacheFirst(request));
+    return;
+  }
+
+  // Everything else (HTML pages, RSC payloads, manifest) → network-first
+  event.respondWith(networkFirst(request));
 });
 
 async function cacheFirst(request) {
@@ -83,7 +112,16 @@ async function networkFirst(request) {
     return response;
   } catch {
     const cached = await caches.match(request);
-    return cached || new Response(JSON.stringify({ error: "offline" }), {
+    if (cached) return cached;
+
+    // Offline fallback for HTML navigations
+    const accept = request.headers.get("Accept") || "";
+    if (accept.includes("text/html")) {
+      const offline = await caches.match("/offline.html");
+      if (offline) return offline;
+    }
+
+    return new Response(JSON.stringify({ error: "offline" }), {
       status: 503,
       headers: { "Content-Type": "application/json" },
     });

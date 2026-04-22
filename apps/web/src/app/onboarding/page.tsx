@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useOnboarding, TOTAL_ONBOARDING_STEPS } from "@/lib/onboarding-store";
 import { useAuth } from "@/lib/auth";
+import { api, ApiError } from "@/lib/api";
 
 import { StepBasics } from "@/components/onboarding/step-basics";
 import { StepGoal } from "@/components/onboarding/step-goal";
@@ -23,57 +24,52 @@ export default function OnboardingPage() {
       return;
     }
 
-    try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/profile/onboarding`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            dateOfBirth: data.dateOfBirth,
-            sex: data.sex,
-            heightCm: data.heightCm,
-            currentWeightKg: data.currentWeightKg,
-            goal: data.goal,
-            healthFocus: (data.healthFocus || []).filter((f) => f !== "none"),
-            activityLevel: data.activityLevel,
-            targetPaceKgPerWeek: data.targetPaceKgPerWeek,
-            dietaryPreferences: data.dietaryPreferences.filter(
-              (p) => p !== "none"
-            ),
-            allergies: data.allergies,
-            unitSystem: data.unitSystem,
-            timezone: data.timezone,
-          }),
-        }
-      );
+    // Shared api client handles base URL + auth token + `/api` prefix.
+    api.setToken(session.access_token);
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        // Surface Zod validation errors or general API errors
-        const msg =
-          err.message ||
-          (err.error?.issues
-            ? err.error.issues.map((i: any) => `${i.path.join(".")}: ${i.message}`).join(", ")
-            : null) ||
-          (err.success === false && err.error
-            ? JSON.stringify(err.error)
-            : null) ||
-          `Failed to save profile (${res.status})`;
-        throw new Error(msg);
-      }
+    try {
+      await api.post("/profile/onboarding", {
+        dateOfBirth: data.dateOfBirth,
+        sex: data.sex,
+        heightCm: data.heightCm,
+        currentWeightKg: data.currentWeightKg,
+        goal: data.goal,
+        healthFocus: (data.healthFocus || []).filter((f) => f !== "none"),
+        activityLevel: data.activityLevel,
+        targetPaceKgPerWeek: data.targetPaceKgPerWeek,
+        dietaryPreferences: data.dietaryPreferences.filter(
+          (p) => p !== "none"
+        ),
+        allergies: data.allergies,
+        unitSystem: data.unitSystem,
+        timezone: data.timezone,
+      });
 
       reset();
       router.push("/");
     } catch (err) {
       console.error("Onboarding submit error:", err);
-      // TODO: show toast
-      alert(
-        err instanceof Error ? err.message : "Something went wrong. Try again."
-      );
+      let msg = "Something went wrong. Try again.";
+      if (err instanceof ApiError) {
+        // Surface Zod validation errors or general API error messages
+        const body = err.body ?? {};
+        msg =
+          body.message ||
+          (body.error?.issues
+            ? body.error.issues
+                .map((i: any) => `${i.path?.join(".")}: ${i.message}`)
+                .join(", ")
+            : null) ||
+          (body.success === false && body.error
+            ? typeof body.error === "string"
+              ? body.error
+              : JSON.stringify(body.error)
+            : null) ||
+          `Failed to save profile (${err.status})`;
+      } else if (err instanceof Error) {
+        msg = err.message;
+      }
+      alert(msg);
     }
   }
 
